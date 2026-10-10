@@ -658,10 +658,9 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     <div class="cart-right">
     <div class="stitle">Carrito</div>
     <div id="cart-items"></div>
-    <div id="cart-desc-row" style="display:flex;gap:8px;align-items:center;margin-top:8px">
-      <span style="font-size:12.5px;font-weight:700;color:var(--txm);white-space:nowrap"><i class="ti ti-discount-2"></i> Descuento</span>
-      <input class="fi" id="cart-desc-val" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" oninput="carritoSetDescVal(this.value)" style="flex:1">
-      <select class="fi" id="cart-desc-tipo" onchange="carritoSetDescTipo(this.value)" style="width:64px"><option value="pct">%</option><option value="monto">$</option></select>
+    <div id="cart-p2-row" onclick="carritoTogglePrecio2()" style="display:flex;gap:10px;align-items:center;margin-top:10px;padding:11px 13px;border:1.5px solid var(--grayb);border-radius:12px;cursor:pointer;user-select:none">
+      <div id="cart-p2-sw" style="width:40px;height:23px;border-radius:999px;background:var(--grayb);position:relative;flex:none;transition:background .15s"><div id="cart-p2-dot" style="width:19px;height:19px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:800">Cobrar con Precio 2</div><div style="font-size:11px;color:var(--txm)">Precio con descuento / oferta</div></div>
     </div>
     <div class="stitle">Pago dividido</div>
     <div id="cart-pagos"></div>
@@ -992,8 +991,10 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
       </div>
     </div>
 
-    <label class="fl">Precio de venta sugerido ($) — opcional</label>
-    <input class="fi" id="nc-precio" type="number" min="0" step="0.01" placeholder="Se autocompleta al vender, siempre editable">
+    <label class="fl">Precio 1 — normal ($)</label>
+    <input class="fi" id="nc-precio" type="number" min="0" step="0.01" placeholder="Precio de venta normal">
+    <label class="fl">Precio 2 — con descuento ($) <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
+    <input class="fi" id="nc-precio2" type="number" min="0" step="0.01" placeholder="Precio de oferta / efectivo">
 
     <input type="hidden" id="nc-id">
     <button class="abtn abtn-g" onclick="saveNuevaCamiseta()"><i class="ti ti-check"></i> Guardar en inventario</button>
@@ -2542,6 +2543,7 @@ function abrirNuevaCamiseta(){
   document.getElementById('nc-marca').value='';
   document.getElementById('nc-min').value='5';
   document.getElementById('nc-precio').value='';
+  document.getElementById('nc-precio2').value='';
   document.getElementById('nc-id').value='';
   document.getElementById('nc-btn-borrar').style.display='none';
   TALLAS_TODAS.forEach(t=>document.getElementById('nc-'+t).value=0);
@@ -2567,6 +2569,7 @@ function editarCamiseta(id){
   document.getElementById('nc-marca').value=(c.temp&&c.temp!=='—')?c.temp:'';
   document.getElementById('nc-min').value=c.min;
   document.getElementById('nc-precio').value=c.precio!=null?c.precio:'';
+  document.getElementById('nc-precio2').value=c.precio2!=null?c.precio2:'';
   document.getElementById('nc-id').value=c.id;
   document.getElementById('nc-btn-borrar').style.display='flex';
   TALLAS_TODAS.forEach(t=>document.getElementById('nc-'+t).value=c.tallas[t]||0);
@@ -2596,18 +2599,20 @@ async function saveNuevaCamiseta(){
   if(esOtro) TALLAS.forEach(t=>tallas[t]=0); // producto sin tallas: solo U
   else tallas['U']=0; // camiseta: sin talla única
   const precioVal=document.getElementById('nc-precio').value;
+  const precio2Val=document.getElementById('nc-precio2').value;
   const data={
     equipo,
     categoria,
     temp:(document.getElementById('nc-marca').value.trim()||'—'),
-    tipo:esOtro?'Otro':'Ropa',
+    tipo:'Otro',
     tallas,
     min:+document.getElementById('nc-min').value||5,
     prov:+document.getElementById('nc-prov').value||1,
     precio:precioVal!==''?+precioVal:null,
+    precio2:precio2Val!==''?+precio2Val:null,
   };
   const editId=+document.getElementById('nc-id').value;
-  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio};
+  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2};
   if(editId){
     // Editar — optimista: aplica local, cierra y muestra al instante; sincroniza por detrás
     const i=camisetas.findIndex(c=>c.id===editId);
@@ -2761,7 +2766,8 @@ let modoVenta=null; // 'libre' o 'stock'
 // ══ CARRITO: venta multi-producto con pago dividido (usa POST /ventas/carrito) ══
 let carrito=[];       // {camId, equipo, talla, cant, precioUnit}
 let carritoPagos=[];  // {metodo, monto}  (monto en $)
-let carritoDescVal=0, carritoDescTipo='pct';   // descuento del carrito
+let carritoDescVal=0, carritoDescTipo='pct';   // (descuento retirado)
+let carritoPrecio2=false;   // venta con Precio 2 (descuento)
 let carritoTipo=null; // 'tienda' | 'online'
 let carritoGuardando=false;
 
@@ -2781,8 +2787,7 @@ function abrirCarrito(){
   (function(){ const _sel=document.getElementById('cart-cam'); if(_sel)_sel.selectedIndex=-1; const _s=document.getElementById('cart-cam-search'); if(_s)_s.value=''; const _p=document.getElementById('cart-precio'); if(_p)_p.value=''; const _l=document.getElementById('cart-cam-list'); if(_l){_l.style.display='none';_l.innerHTML='';} carritoStockInfo(); })();
   carritoRenderItems();
   carritoRenderPagos();
-  const _dv=document.getElementById('cart-desc-val'); if(_dv) _dv.value='';
-  const _dt=document.getElementById('cart-desc-tipo'); if(_dt) _dt.value='pct';
+  carritoPrecio2=false; carritoP2UI();
   vueltoAuto=true; vueltoMonedaPrev='usd'; vueltoTasa=0;
   poblarVueltoMonedas();
   const _vm=document.getElementById('vuelto-moneda'); if(_vm) _vm.value='usd';
@@ -2832,9 +2837,19 @@ function carritoStockInfo(){
   const col=disp<=0?'var(--rd)':(disp<=2?'var(--ad)':'var(--gd)');
   el.innerHTML=`<i class="ti ti-stack-2" style="font-size:13px;color:${col}"></i> <b style="color:${col}">${disp}</b> <span style="color:var(--txm)">en existencia (talla ${talla})</span>${ya?` <span style="color:var(--txh)">· ${ya} en el carrito</span>`:''}`;
 }
+function carritoP2UI(){
+  const sw=document.getElementById('cart-p2-sw'), dot=document.getElementById('cart-p2-dot');
+  if(sw) sw.style.background=carritoPrecio2?'var(--g)':'var(--grayb)';
+  if(dot) dot.style.left=carritoPrecio2?'19px':'2px';
+}
+function carritoReprecio(){
+  carrito.forEach(it=>{ const c=camisetas.find(x=>x.id===it.camId); if(c){ it.precioUnit=(carritoPrecio2&&c.precio2!=null)?+c.precio2:(c.precio!=null?+c.precio:it.precioUnit); } });
+  carritoRenderItems(); carritoRenderPagos();
+}
+function carritoTogglePrecio2(){ carritoPrecio2=!carritoPrecio2; carritoP2UI(); carritoAutoPrecio(); carritoReprecio(); }
 function carritoAutoPrecio(){
   const c=camisetas.find(x=>x.id===+document.getElementById('cart-cam').value);
-  if(c && c.precio!=null) document.getElementById('cart-precio').value=(+c.precio).toFixed(2);
+  if(c){ const pp=(carritoPrecio2&&c.precio2!=null)?+c.precio2:(c.precio!=null?+c.precio:null); if(pp!=null) document.getElementById('cart-precio').value=pp.toFixed(2); }
 }
 function carritoEnCarrito(camId,talla){ return carrito.filter(it=>it.camId===camId&&it.talla===talla).reduce((a,it)=>a+it.cant,0); }
 function carritoAgregarProducto(){
@@ -2853,7 +2868,7 @@ function carritoAgregarProducto(){
 }
 function carritoQuitarProducto(i){ carrito.splice(i,1); carritoRenderItems(); carritoRenderPagos(); }
 function carritoTotal(){ return carrito.reduce((a,it)=>a+it.precioUnit*it.cant,0); }
-function carritoDescMonto(){ const sub=carritoTotal(); if(sub<=0) return 0; if(carritoDescTipo==='pct'){ const q=Math.min(100,Math.max(0,carritoDescVal)); return +(sub*q/100).toFixed(2);} return Math.min(sub, Math.max(0,carritoDescVal)); }
+function carritoDescMonto(){ return 0; }
 function carritoTotalCobrar(){ return +Math.max(0, carritoTotal()-carritoDescMonto()).toFixed(2); }
 function carritoSetDescVal(v){ carritoDescVal=parseFloat(String(v).replace(',','.'))||0; carritoRenderItems(); carritoRenderPagos(); }
 function carritoSetDescTipo(t){ carritoDescTipo=(t==='monto')?'monto':'pct'; carritoRenderItems(); carritoRenderPagos(); }
