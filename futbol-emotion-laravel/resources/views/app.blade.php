@@ -946,6 +946,10 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     <input class="fi" id="nc-marca" placeholder="Ej: Gef, Oster, Ovejita…">
     <label class="fl">Color</label>
     <input class="fi" id="nc-color" placeholder="Ej: Blanco, Azul, Negro…">
+    <div id="nc-depto-ropa-wrap">
+      <label class="fl">Departamento</label>
+      <select class="fi" id="nc-depto-ropa"><option>Ropa escolar</option><option>Ropa general</option></select>
+    </div>
 
     <div class="frow" id="nc-camposcam" style="display:none">
       <div>
@@ -1149,6 +1153,7 @@ function setCatProducto(cat){
   document.getElementById('nc-chip-cam').style.cssText='padding:11px;border-radius:11px;cursor:pointer;font-size:13px;font-weight:800;'+(esCam?'border:2px solid var(--g);background:var(--gl);color:var(--gd)':'border:2px solid var(--grayb);background:var(--card);color:var(--txm)');
   document.getElementById('nc-chip-otro').style.cssText='padding:11px;border-radius:11px;cursor:pointer;font-size:13px;font-weight:800;'+(!esCam?'border:2px solid var(--g);background:var(--gl);color:var(--gd)':'border:2px solid var(--grayb);background:var(--card);color:var(--txm)');
   document.getElementById('nc-cat-wrap').style.display=esCam?'none':'block';
+  document.getElementById('nc-depto-ropa-wrap').style.display=esCam?'block':'none';
   document.getElementById('nc-camposcam').style.display='none';
   document.getElementById('nc-tallas-cam').style.display=esCam?'block':'none';
   document.getElementById('nc-tallas-otro').style.display=esCam?'none':'block';
@@ -2459,7 +2464,7 @@ function filtrarCamisetas(q){
   const tokens = normalizarTxt(q).split(/\s+/).filter(Boolean);
   const pref = normalizarTxt(q).trim();
   const scored = camisetas.map(c=>{
-    const campos = normalizarTxt([c.equipo,c.color,c.tipo,c.temp,c.categoria,nombreProv(c.prov)].filter(Boolean).join(' '));
+    const campos = normalizarTxt([c.equipo,c.color,c.departamento,c.tipo,c.temp,c.categoria,nombreProv(c.prov)].filter(Boolean).join(' '));
     const eq = normalizarTxt(c.equipo);
     let hits=0; for(const tk of tokens){ if(campos.includes(tk)) hits++; }
     return {c, hits, eq, starts:(eq.startsWith(pref)||campos.includes(pref))?1:0};
@@ -2492,7 +2497,7 @@ function cardIndividual(c){
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
           <div>
             <div style="font-size:17px;font-weight:800">${nombreProducto(c)}</div>
-            <div style="font-size:12px;color:var(--txm)">${esCamiseta(c)?`👕 Ropa${c.temp&&c.temp!=='—'?' · '+c.temp:''}`:`📦 ${c.categoria}${c.temp&&c.temp!=='—'?' · '+c.temp:''}`} · ${nombreProv(c.prov)}</div>
+            <div style="font-size:12px;color:var(--txm)">${esCamiseta(c)?`👕 ${c.departamento||'Ropa'}${c.temp&&c.temp!=='—'?' · '+c.temp:''}`:`📦 ${c.categoria}${c.temp&&c.temp!=='—'?' · '+c.temp:''}`} · ${nombreProv(c.prov)}</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:21px;font-weight:800;color:${clr}">${total} <span style="font-size:12px;font-weight:700;color:${clr};opacity:.7">UND</span></div>
@@ -2525,7 +2530,7 @@ function matrizCard(nombre, grupo){
   }).join('');
   return `<div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div><div style="font-size:17px;font-weight:800">${nombre}</div><div style="font-size:12px;color:var(--txm)">\ud83d\udc55 Ropa${marca?' \u00b7 '+marca:''} \u00b7 ${grupo.length} color${grupo.length!==1?'es':''}</div></div>
+      <div><div style="font-size:17px;font-weight:800">${nombre}</div><div style="font-size:12px;color:var(--txm)">\ud83d\udc55 ${(grupo.find(x=>x.departamento)||{}).departamento||'Ropa'}${marca?' \u00b7 '+marca:''} \u00b7 ${grupo.length} color${grupo.length!==1?'es':''}</div></div>
       <div style="text-align:right"><div style="font-size:21px;font-weight:800">${totalG} <span style="font-size:12px;font-weight:700;color:var(--txm)">UND</span></div></div>
     </div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -2579,6 +2584,7 @@ function abrirNuevaCamiseta(){
   document.getElementById('nc-equipo').value='';
   document.getElementById('nc-marca').value='';
   document.getElementById('nc-color').value='';
+  {const _d=document.getElementById('nc-depto-ropa'); if(_d)_d.selectedIndex=0;}
   document.getElementById('nc-min').value='5';
   document.getElementById('nc-precio').value='';
   document.getElementById('nc-precio2').value='';
@@ -2606,6 +2612,7 @@ function editarCamiseta(id){
   document.getElementById('nc-equipo').value=c.equipo;
   document.getElementById('nc-marca').value=(c.temp&&c.temp!=='—')?c.temp:'';
   document.getElementById('nc-color').value=c.color||'';
+  {const _d=document.getElementById('nc-depto-ropa'); if(_d)_d.value=(c.departamento==='Ropa general')?'Ropa general':'Ropa escolar';}
   document.getElementById('nc-min').value=c.min;
   document.getElementById('nc-precio').value=c.precio!=null?c.precio:'';
   document.getElementById('nc-precio2').value=c.precio2!=null?c.precio2:'';
@@ -2645,6 +2652,7 @@ async function saveNuevaCamiseta(){
     equipo,
     categoria,
     color,
+    departamento: esOtro ? categoria : ((document.getElementById('nc-depto-ropa')||{}).value||'Ropa'),
     temp:(document.getElementById('nc-marca').value.trim()||'—'),
     tipo:'Otro',
     tallas,
@@ -2654,7 +2662,7 @@ async function saveNuevaCamiseta(){
     precio2:precio2Val!==''?+precio2Val:null,
   };
   const editId=+document.getElementById('nc-id').value;
-  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,color:data.color};
+  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,color:data.color,departamento:data.departamento};
   if(editId){
     // Editar — optimista: aplica local, cierra y muestra al instante; sincroniza por detrás
     const i=camisetas.findIndex(c=>c.id===editId);
