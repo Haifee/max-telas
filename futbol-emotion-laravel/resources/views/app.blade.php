@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Max Telas</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#16a34a">
+<meta name="theme-color" content="#2626cc">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
@@ -14,7 +14,7 @@
      Ver cargarScript()/asegurar* mas abajo. -->
 <style>
 :root{
-  --g:#16a34a;--gl:#dcfce7;--gm:#22c55e;--gd:#15803d;--gx:#bbf7d0;
+  --g:#2626cc;--gl:#e0e0f8;--gm:#3c3cd1;--gd:#2020ab;--gx:#bebef0;
   --r:#ef4444;--rl:#fee2e2;--rd:#dc2626;
   --a:#f59e0b;--al:#fef3c7;--ad:#d97706;
   --p:#8b5cf6;--pl:#ede9fe;--pd:#7c3aed;
@@ -29,7 +29,7 @@ body.noche{
   --bg:#0f172a;--card:#1e293b;
   --gray:#273449;--grayb:#334155;
   --tx:#f1f5f9;--txm:#94a3b8;--txh:#7c8aa0;
-  --g:#4ade80;--gd:#4ade80;--gm:#22c55e;--gl:#143524;--gx:#143524;
+  --g:#6b6bf0;--gd:#6b6bf0;--gm:#3c3cd1;--gl:#1a1a40;--gx:#1a1a40;
   --r:#f87171;--rd:#f87171;--rl:#3a1f1f;
   --a:#fbbf24;--ad:#fbbf24;--al:#3a2f14;
   --p:#a78bfa;--pd:#a78bfa;--pl:#2a2246;
@@ -43,22 +43,22 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 #ls{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:#071810;--bg:#f1f5f9;--card:#ffffff;--gray:#f8fafc;--grayb:#e2e8f0;--tx:#0f172a;--txm:#64748b;--txh:#94a3b8}
 .llogo{font-size:32px;font-weight:800;color:#fff;margin-bottom:6px;letter-spacing:-1px;display:flex;align-items:center;gap:10px}
 .llogo-ico{display:none}
-.llogo span{color:#22c55e}
+.llogo span{color:#3c3cd1}
 .lsub{color:rgba(255,255,255,.4);font-size:11px;margin-bottom:28px;letter-spacing:1.5px;text-transform:uppercase}
 .lcard{background:var(--card);border-radius:28px;padding:30px 24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .lroles{display:flex;flex-direction:column;gap:10px;margin-bottom:22px}
 .lrole{padding:16px 18px;border-radius:16px;border:2px solid var(--grayb);cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .2s;background:var(--card)}
 .lrole:active{transform:scale(.98)}
-.lrole.sel{border-color:#22c55e;background:#f0fdf4;box-shadow:0 0 0 3px rgba(34,197,94,.12)}
+.lrole.sel{border-color:#3c3cd1;background:#f0fdf4;box-shadow:0 0 0 3px rgba(34,197,94,.12)}
 .lrico{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-.ico-m{background:#dcfce7;color:#15803d}
+.ico-m{background:#e0e0f8;color:#2020ab}
 .ico-o{background:#ede9fe;color:#7c3aed}
 .lrname{font-size:16px;font-weight:700;color:var(--tx)}
 .lrdesc{font-size:12px;color:var(--txm);margin-top:2px}
 .lpilab{font-size:11px;font-weight:700;color:var(--txm);margin-bottom:8px;display:block;text-transform:uppercase;letter-spacing:.6px}
 .lpi{width:100%;padding:16px;font-size:28px;letter-spacing:12px;border:2px solid var(--grayb);border-radius:16px;text-align:center;outline:none;color:var(--tx);background:var(--gray);transition:all .2s}
-.lpi:focus{border-color:#22c55e;background:var(--card);box-shadow:0 0 0 4px rgba(34,197,94,.1)}
-.lbtn{width:100%;padding:16px;background:#16a34a;color:#fff;border:none;border-radius:16px;font-size:17px;font-weight:700;cursor:pointer;margin-top:14px;box-shadow:0 4px 15px rgba(22,163,74,.4)}
+.lpi:focus{border-color:#3c3cd1;background:var(--card);box-shadow:0 0 0 4px rgba(34,197,94,.1)}
+.lbtn{width:100%;padding:16px;background:#2626cc;color:#fff;border:none;border-radius:16px;font-size:17px;font-weight:700;cursor:pointer;margin-top:14px;box-shadow:0 4px 15px rgba(38,38,204,.4)}
 .lbtn:active{opacity:.92;transform:scale(.99)}.lerr{color:#ef4444;font-size:13px;text-align:center;margin-top:10px;min-height:18px;font-weight:600}
 
 /* APP */
@@ -67,12 +67,12 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 /* TOPBAR */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 18px 11px;background:#071810;flex-shrink:0;box-shadow:0 2px 12px rgba(0,0,0,.25)}
 .tbrand{font-size:19px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:8px}
-.tbrand-dot{width:8px;height:8px;background:#22c55e;border-radius:50%}
+.tbrand-dot{width:8px;height:8px;background:#3c3cd1;border-radius:50%}
 .tbrand span{color:var(--g)}
 .mtm{font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:22px;letter-spacing:1px;color:var(--g);line-height:1}
 .tright{display:flex;align-items:center;gap:8px}
 .chip{font-size:11px;padding:5px 12px;border-radius:20px;font-weight:700}
-.chip-m{background:rgba(34,197,94,.18);color:#86efac}
+.chip-m{background:rgba(34,197,94,.18);color:#b9b9f5}
 .chip-o{background:rgba(139,92,246,.18);color:#c4b5fd}
 .btnout{background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.6);font-size:19px;cursor:pointer;padding:7px;display:flex;align-items:center;border-radius:10px}
 .btnout:active{background:rgba(255,255,255,.15)}
@@ -85,8 +85,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .bnav{display:flex;border-top:1px solid var(--grayb);background:var(--card);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0);box-shadow:0 -4px 16px rgba(0,0,0,.06)}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 2px 8px;cursor:pointer;color:var(--txh);font-size:10px;font-weight:600;gap:3px;border:none;background:none;position:relative;transition:all .2s}
 .ni i{font-size:22px;transition:all .2s}
-.ni.active{color:#16a34a}.ni.active i{color:#16a34a;transform:scale(1.12)}
-.ni.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:28px;height:3px;background:#16a34a;border-radius:3px 3px 0 0}
+.ni.active{color:#2626cc}.ni.active i{color:#2626cc;transform:scale(1.12)}
+.ni.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:28px;height:3px;background:#2626cc;border-radius:3px 3px 0 0}
 .nbadge{position:absolute;top:7px;right:calc(50% - 20px);background:#ef4444;color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;box-shadow:0 2px 6px rgba(239,68,68,.5)}
 
 /* CARDS */
@@ -116,7 +116,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 /* BUTTONS */
 .abtn{padding:15px;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:10px;letter-spacing:.1px;transition:all .2s}
 .abtn:active{opacity:.88;transform:scale(.98)}
-.abtn-g{background:#16a34a;color:#fff;box-shadow:0 4px 14px rgba(22,163,74,.35)}
+.abtn-g{background:#2626cc;color:#fff;box-shadow:0 4px 14px rgba(38,38,204,.35)}
 .abtn-r{background:var(--rl);color:var(--rd)}
 .abtn-a{background:var(--gl);color:var(--gd);border:1.5px solid var(--gm)}
 .abtn-gray{background:var(--gray);color:var(--tx);border:1.5px solid var(--grayb)}
@@ -127,7 +127,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .fl{display:block;font-size:11px;font-weight:700;color:var(--txm);margin-bottom:6px;margin-top:14px;text-transform:uppercase;letter-spacing:.5px}
 .fl:first-of-type{margin-top:0}
 .fi{width:100%;padding:13px 14px;border:1.5px solid var(--grayb);border-radius:12px;font-size:15px;color:var(--tx);background:var(--gray);outline:none;appearance:none;transition:all .2s}
-.fi:focus{border-color:#22c55e;background:var(--card);box-shadow:0 0 0 3px rgba(34,197,94,.12)}
+.fi:focus{border-color:#3c3cd1;background:var(--card);box-shadow:0 0 0 3px rgba(34,197,94,.12)}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .stitle{font-size:11px;font-weight:700;color:var(--txh);text-transform:uppercase;letter-spacing:.6px;margin:18px 0 9px;display:flex;align-items:center;gap:7px}
 .stitle:first-child{margin-top:0}
@@ -137,7 +137,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .prov-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
 .prov-card{padding:22px 12px;border:2px solid var(--grayb);border-radius:18px;cursor:pointer;text-align:center;background:var(--card);transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05)}
 .prov-card:active{transform:scale(.96)}
-.prov-card.sel{border-color:#22c55e;background:var(--gl);box-shadow:0 0 0 3px rgba(34,197,94,.12)}
+.prov-card.sel{border-color:#3c3cd1;background:var(--gl);box-shadow:0 0 0 3px rgba(34,197,94,.12)}
 .prov-num{font-size:40px;font-weight:800;color:var(--g);line-height:1}
 .prov-lbl{font-size:12px;color:var(--txm);margin-top:4px;font-weight:600}
 
@@ -148,9 +148,9 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .tlab-und{font-size:11px;color:var(--txm);font-weight:600}
 .tcant{display:flex;align-items:center;gap:12px;flex-shrink:0;margin-left:auto}
 .cbtn{width:42px;height:42px;border-radius:12px;border:1.5px solid var(--grayb);background:var(--gray);font-size:24px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx);transition:all .15s}
-.cbtn:active{background:#dcfce7;border-color:#22c55e;transform:scale(.92)}
+.cbtn:active{background:#e0e0f8;border-color:#3c3cd1;transform:scale(.92)}
 .cval{font-size:22px;font-weight:800;min-width:36px;text-align:center}
-.cval.pos{color:#16a34a}
+.cval.pos{color:#2626cc}
 
 /* STOCK TALLAS */
 .tgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:10px}
@@ -198,13 +198,13 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .swrap{position:relative;margin-bottom:12px}
 .swrap i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--txh);font-size:17px}
 .sinput{width:100%;padding:12px 14px 12px 40px;border:1.5px solid var(--grayb);border-radius:14px;font-size:14px;color:var(--tx);background:var(--card);outline:none;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-.sinput:focus{border-color:#22c55e}
+.sinput:focus{border-color:#3c3cd1}
 
 /* FBAR */
 .fbar{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
 .fbar::-webkit-scrollbar{display:none}
 .ftag{padding:8px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:none;white-space:nowrap;background:var(--card);color:var(--txm);flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-.ftag.on{background:#16a34a;color:#fff}
+.ftag.on{background:#2626cc;color:#fff}
 
 /* PROGRESS */
 .pbar{height:7px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:6px}
@@ -227,14 +227,14 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .hero-card{
   border-radius:22px;padding:22px 20px 20px;margin-bottom:16px;
   position:relative;overflow:hidden;color:#fff;
-  background:linear-gradient(135deg,#052e16 0%,#14532d 50%,#166534 100%);
+  background:linear-gradient(135deg,#0d0d3a 0%,#1a1a8a 55%,#2626cc 100%);
 }
 .hero-card::before{
   content:'';position:absolute;width:200px;height:200px;border-radius:50%;
   background:rgba(255,255,255,.04);top:-60px;right:-40px;pointer-events:none
 }
 .hero-card::after{
-  content:'⚽';position:absolute;right:18px;bottom:-10px;
+  content:'🛍️';position:absolute;right:18px;bottom:-10px;
   font-size:80px;opacity:.08;line-height:1;pointer-events:none
 }
 .hero-hora{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:10px}
@@ -251,7 +251,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 /* ── METRIC CARDS ─────────────────────────────────────────────────────────── */
 .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
 .mc{border-radius:16px;padding:16px;position:relative;overflow:hidden;min-height:90px}
-.mc-g{background:linear-gradient(145deg,#14532d,#15803d)}
+.mc-g{background:linear-gradient(145deg,#047857,#059669)}
 .mc-r{background:linear-gradient(145deg,#7f1d1d,#991b1b)}
 .mc-p{background:linear-gradient(145deg,#4c1d95,#5b21b6)}
 .mc-b{background:linear-gradient(145deg,#1e3a8a,#1d4ed8)}
@@ -303,7 +303,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     position:relative;
   }
   .ni i{font-size:21px}
-  .ni.active{background:var(--gl,#dcfce7)}
+  .ni.active{background:var(--gl,#e0e0f8)}
   .ni.active::after{display:none}
   .nbadge{top:50%;right:14px;transform:translateY(-50%)}
   .page{padding:28px 40px;max-width:1080px;margin:0 auto}
@@ -528,7 +528,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
         <span style="font-size:11px;font-weight:600;color:var(--txm)">Para imprimir o enviar</span>
       </button>
       <button onclick="exportarReporte('excel')" style="padding:18px 10px;border-radius:12px;border:2px solid var(--grayb);background:var(--card);cursor:pointer;font-size:14px;font-weight:800;color:var(--txd);display:flex;flex-direction:column;align-items:center;gap:8px">
-        <i class="ti ti-file-type-xls" style="font-size:32px;color:#16a34a"></i>Excel
+        <i class="ti ti-file-type-xls" style="font-size:32px;color:#2626cc"></i>Excel
         <span style="font-size:11px;font-weight:600;color:var(--txm)">Para el contador</span>
       </button>
     </div>
@@ -560,7 +560,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     <div class="modal-handle"></div>
     <div class="mtitle">Camiseta reconocida <button class="mclose" onclick="closeM('m-scan-add')"><i class="ti ti-x"></i></button></div>
     <div style="background:var(--gl);border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px">
-      <i class="ti ti-shirt" style="font-size:28px;color:var(--g)"></i>
+      <i class="ti ti-box" style="font-size:28px;color:var(--g)"></i>
       <div>
         <div style="font-size:16px;font-weight:800" id="sa-nombre">—</div>
         <div style="font-size:13px;color:var(--txm)">Talla <b id="sa-talla">—</b> · Stock actual: <b id="sa-stock">0</b> UND</div>
@@ -710,7 +710,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
         </button>
         <button id="modo-stock" onclick="setModoVenta('stock')"
           style="padding:11px;border-radius:10px;border:2px solid var(--grayb);background:var(--card);cursor:pointer;font-size:13px;font-weight:700;color:var(--txm);display:flex;flex-direction:column;align-items:center;gap:5px">
-          <i class="ti ti-shirt" style="font-size:22px"></i>Del stock
+          <i class="ti ti-box" style="font-size:22px"></i>Del stock
         </button>
         <button id="modo-scan" onclick="modoEscanear()"
           style="padding:11px;border-radius:10px;border:2px solid var(--gm);background:var(--gl);cursor:pointer;font-size:13px;font-weight:700;color:var(--gd);display:flex;flex-direction:column;align-items:center;gap:5px">
@@ -1063,7 +1063,7 @@ function aplicarMarca(){
     document.title = MARCA.nombre;
     const logo=document.querySelector('.tbrand img'); if(logo) logo.alt=MARCA.nombre;
     // Solo recolorea si el color cambió (así el verde original queda idéntico por defecto)
-    if(MARCA.color && MARCA.color.toLowerCase()!=='#16a34a'){
+    if(MARCA.color && MARCA.color.toLowerCase()!=='#2626cc'){
       const c=MARCA.color, r=document.documentElement.style;
       r.setProperty('--g',  c);
       r.setProperty('--gd', _mMix(c,'#000000',0.16));
@@ -1263,8 +1263,8 @@ function doLogout(){
 function buildNav(){
   const nav=document.getElementById('bnav');
   const tabs=role==='manager'
-    ?[{id:'home',icon:'ti-home',label:'Inicio'},{id:'misventas',icon:'ti-cash',label:'Ventas'},{id:'pedido',icon:'ti-clipboard-list',label:'Pedir'},{id:'stock',icon:'ti-shirt',label:'Stock'},{id:'caja',icon:'ti-report-money',label:'Caja'}]
-    :[{id:'home',icon:'ti-home',label:'Inicio'},{id:'misventas',icon:'ti-cash',label:'Ventas'},{id:'stock',icon:'ti-shirt',label:'Stock'},{id:'pedido',icon:'ti-clipboard-list',label:'Pedir'},{id:'caja',icon:'ti-report-money',label:'Caja'},{id:'mas',icon:'ti-dots',label:'Más'}];
+    ?[{id:'home',icon:'ti-home',label:'Inicio'},{id:'misventas',icon:'ti-cash',label:'Ventas'},{id:'pedido',icon:'ti-clipboard-list',label:'Pedir'},{id:'stock',icon:'ti-box',label:'Stock'},{id:'caja',icon:'ti-report-money',label:'Caja'}]
+    :[{id:'home',icon:'ti-home',label:'Inicio'},{id:'misventas',icon:'ti-cash',label:'Ventas'},{id:'stock',icon:'ti-box',label:'Stock'},{id:'pedido',icon:'ti-clipboard-list',label:'Pedir'},{id:'caja',icon:'ti-report-money',label:'Caja'},{id:'mas',icon:'ti-dots',label:'Más'}];
   nav.innerHTML=tabs.map(t=>`<button class="ni" id="ni-${t.id}" onclick="goTo('${t.id}')"><i class="ti ${t.icon}"></i><span>${t.label}</span></button>`).join('');
   // Historial y Ajustes pasan al encabezado (solo dueño)
   document.getElementById('hdr-hist').style.display=role==='owner'?'flex':'none';
@@ -2028,7 +2028,7 @@ function reposicionSugerida(dias){
   items.sort((a,b)=>(b.agotada-a.agotada)||(b.vend-a.vend));
   return items;
 }
-function repoIco(i){ return i.agotada ? '<div class="liico" style="background:var(--rl);color:var(--r)"><i class="ti ti-shirt"></i></div>' : '<div class="liico ia"><i class="ti ti-shirt"></i></div>'; }
+function repoIco(i){ return i.agotada ? '<div class="liico" style="background:var(--rl);color:var(--r)"><i class="ti ti-box"></i></div>' : '<div class="liico ia"><i class="ti ti-box"></i></div>'; }
 function renderRepoCard(){
   const items = reposicionSugerida();
   if(!items.length) return `<div class="abox abox-g"><i class="ti ti-circle-check"></i><div><div class="abox-title">Inventario al día</div><div class="abox-sub">Ninguna talla con ventas está por agotarse</div></div></div>`;
@@ -2224,14 +2224,14 @@ function renderHome(){
 
     cont.innerHTML=`
       <div class="hero-card">
-        <div class="hero-hora">${getHora()} · FÚTBOL EMOTION</div>
+        <div class="hero-hora">${getHora()} · ${(MARCA.nombre||'').toUpperCase()}</div>
         <div class="hero-saludo">${getSaludo()}</div>
         <div class="hero-sub">${getSubSaludo()}</div>
         <div class="hero-badge"><i class="ti ti-user"></i> Encargado</div>
       </div>
       <div class="mgrid">
         <div class="mc mc-b"><i class="ti ti-truck mc-ico"></i><div class="mcl">Envíos activos</div><div class="mcv">${envActivos}</div><div class="mcs">en proceso</div></div>
-        <div class="mc ${criticos.length?'mc-r':'mc-g'}"><i class="ti ti-shirt mc-ico"></i><div class="mcl">Stock crítico</div><div class="mcv">${criticos.length}</div><div class="mcs">modelos</div></div>
+        <div class="mc ${criticos.length?'mc-r':'mc-g'}"><i class="ti ti-box mc-ico"></i><div class="mcl">Stock crítico</div><div class="mcv">${criticos.length}</div><div class="mcs">modelos</div></div>
         <div class="mc ${pendDev?'mc-a':'mc-g'}"><i class="ti ti-refresh mc-ico"></i><div class="mcl">Cambios</div><div class="mcv">${pendDev}</div><div class="mcs">pendientes</div></div>
         <div class="mc ${pendPed?'mc-p':'mc-cyan'}"><i class="ti ti-clipboard-list mc-ico"></i><div class="mcl">Por aprobar</div><div class="mcv">${pendPed}</div><div class="mcs">pedidos</div></div>
       </div>
@@ -2278,7 +2278,7 @@ function renderHome(){
 
     cont.innerHTML=`
       <div class="hero-card">
-        <div class="hero-hora">${getHora()} · FÚTBOL EMOTION</div>
+        <div class="hero-hora">${getHora()} · ${(MARCA.nombre||'').toUpperCase()}</div>
         <div class="hero-saludo">${getSaludo()}</div>
         <div class="hero-sub">${getSubSaludo()}</div>
         <div class="hero-badge"><i class="ti ti-crown"></i> Dueña</div>
@@ -2465,7 +2465,7 @@ function renderStock(){
       <input class="fi" id="stk-search" placeholder="Buscar: equipo, tipo, temporada, proveedor…" oninput="filtrarStock()" style="padding-left:38px;margin:0" value="${stkQuery.replace(/"/g,'&quot;')}">
       ${stkQuery?`<button onclick="limpiarBusquedaStock()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--txh);font-size:18px"><i class="ti ti-x"></i></button>`:''}
     </div>
-    ${camisetas.length===0?`<div class="empty"><i class="ti ti-shirt"></i><p>Sin camisetas en inventario.<br>Pulsa "Nueva camiseta" para empezar.</p></div>`:''}
+    ${camisetas.length===0?`<div class="empty"><i class="ti ti-box"></i><p>Sin camisetas en inventario.<br>Pulsa "Nueva camiseta" para empezar.</p></div>`:''}
     ${(()=>{const lista=filtrarCamisetas(stkQuery);return lista.length===0&&camisetas.length>0?`<div class="empty"><i class="ti ti-search-off"></i><p>Nada coincide con "${stkQuery}"</p></div>`:(stkQuery.trim()?`<div style="font-size:12px;color:var(--txm);font-weight:700;margin-bottom:8px">${lista.length} resultado${lista.length!==1?'s':''}</div>`:'')+'<div class="stock-grid">'+lista.map(c=>{
       const s=stockStatus(c);
       const clr=s==='ok'?'var(--g)':s==='bajo'?'var(--a)':'var(--r)';
@@ -3575,7 +3575,7 @@ function renderMas(){
       ${item("goTo('clientes')",'ti-users','var(--bl)','var(--b)','Clientes','Historial y mejores clientes')}
       ${item("goTo('nomina')",'ti-wallet','var(--gl)','var(--g)','Personal y nómina','Tu equipo y sus pagos')}
       ${item("abrirBuscarFecha()",'ti-calendar-search','var(--bl)','var(--b)','Ventas por fecha','Revisa cualquier día o mes')}
-      ${item("goTo('verstock')",'ti-shirt','var(--gl)','var(--g)','Ver stock','Inventario completo por tallas')}
+      ${item("goTo('verstock')",'ti-box','var(--gl)','var(--g)','Ver stock','Inventario completo por tallas')}
       ${item("goTo('aprobar')",'ti-clipboard-check',pendPed>0?'var(--al)':'var(--gray)',pendPed>0?'var(--a)':'var(--txm)','Pedidos a proveedores',pendPed>0?pendPed+' esperando tu aprobación':'Sin pedidos pendientes')}
       ${item("goTo('dev')",'ti-refresh',pendDev>0?'var(--al)':'var(--gray)',pendDev>0?'var(--a)':'var(--txm)','Cambios y devoluciones',pendDev>0?pendDev+' esperando tu aprobación':'Sin cambios pendientes')}
       ${item("goTo('historial')",'ti-timeline','var(--bl)','var(--b)','Ver historial','Todo lo que hizo el encargado hoy')}
@@ -4267,7 +4267,7 @@ function generarPDF(d,nombre){
 
   doc.setFillColor(verde[0],verde[1],verde[2]); doc.rect(0,0,210,26,'F');
   doc.setTextColor(255,255,255); doc.setFontSize(16); doc.setFont(undefined,'bold');
-  doc.text('FÚTBOL EMOTION',14,11);
+  doc.text((MARCA.nombre||'').toUpperCase(),14,11);
   doc.setFontSize(11); doc.setFont(undefined,'normal');
   doc.text(d.titulo+' — '+d.etiqueta,14,19);
   doc.setTextColor(120,120,120); doc.setFontSize(8);
@@ -4339,7 +4339,7 @@ function generarExcel(d,nombre){
   const wb=XLSX.utils.book_new();
 
   const resumen=[
-    ['FÚTBOL EMOTION — '+d.titulo],
+    [(MARCA.nombre||'').toUpperCase()+' — '+d.titulo],
     ['Período',d.etiqueta],
     ['Generado',new Date().toLocaleString('es')],
     [],
@@ -4530,7 +4530,7 @@ function renderAjustes(){
     <div class="stitle">Información</div>
     <div class="card">
       <div class="li">
-        <div class="liico igr"><i class="ti ti-shirt"></i></div>
+        <div class="liico igr"><i class="ti ti-box"></i></div>
         <div class="libody"><div class="liname">Camisetas en catálogo</div></div>
         <div class="liright" style="font-weight:800">${camisetas.length}</div>
       </div>
@@ -5085,7 +5085,7 @@ function renderHistorial(){
     pedido:     {icon:'ti-clipboard-list', cls:'ip', label:'Pedido'},
     envio:      {icon:'ti-map-pin', cls:'ib', label:'Envío'},
     devolucion: {icon:'ti-refresh', cls:'ia', label:'Cambio'},
-    stock:      {icon:'ti-shirt', cls:'igr', label:'Stock'},
+    stock:      {icon:'ti-box', cls:'igr', label:'Stock'},
     aprobacion: {icon:'ti-check', cls:'ig', label:'Aprobado'},
     rechazo:    {icon:'ti-x', cls:'ir', label:'Rechazado'},
     estado:     {icon:'ti-truck', cls:'ia', label:'Envío'},
