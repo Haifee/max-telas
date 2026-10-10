@@ -53,6 +53,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .lrico{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
 .ico-m{background:#e0e0f8;color:#2020ab}
 .ico-o{background:#ede9fe;color:#7c3aed}
+.ico-t{background:#dbeafe;color:#1d4ed8}
 .lrname{font-size:16px;font-weight:700;color:var(--tx)}
 .lrdesc{font-size:12px;color:var(--txm);margin-top:2px}
 .lpilab{font-size:11px;font-weight:700;color:var(--txm);margin-bottom:8px;display:block;text-transform:uppercase;letter-spacing:.6px}
@@ -342,6 +343,19 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   .modal-handle{display:none}
 }
 </style>
+<style>
+#recibo-print{display:none}
+#recibo-print .rc-c{text-align:center}#recibo-print .rc-b{font-weight:800}
+#recibo-print .rc-hr{border:none;border-top:1px dashed #000;margin:6px 0}
+#recibo-print .rc-row{display:flex;justify-content:space-between;gap:8px}
+#recibo-print .rc-big{font-size:17px;font-weight:800}#recibo-print .rc-sm{font-size:10.5px}
+@media print{
+  html,body{background:#fff!important}
+  body>*{display:none!important}
+  #recibo-print{display:block!important;position:absolute;left:0;top:0;width:80mm;padding:4mm 3mm;font-family:'Courier New',monospace;color:#000;font-size:12px;line-height:1.35}
+  @page{size:80mm auto;margin:0}
+}
+</style>
 </head>
 <body>
 
@@ -361,6 +375,10 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
       <div class="lrole" id="lr-o" onclick="selRole('owner')">
         <div class="lrico ico-o"><i class="ti ti-crown"></i></div>
         <div><div class="lrname">Soy el dueño</div><div class="lrdesc">Apruebo pedidos y veo todo</div></div>
+      </div>
+      <div class="lrole" id="lr-t" onclick="selRole('trabajador')">
+        <div class="lrico ico-t"><i class="ti ti-building-store"></i></div>
+        <div><div class="lrname">Soy el trabajador</div><div class="lrdesc">Solo registrar ventas en la caja</div></div>
       </div>
     </div>
     <label class="lpilab">PIN de acceso</label>
@@ -985,6 +1003,18 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 
 <div id="toast"></div>
 
+<div id="recibo-print"></div>
+<div id="ventaok" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--card);border-radius:20px;padding:26px 22px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <div style="font-size:46px;line-height:1">✅</div>
+    <div style="font-size:19px;font-weight:800;margin:8px 0 2px">Venta registrada</div>
+    <div id="ventaok-num" style="font-size:12.5px;color:var(--txm)"></div>
+    <div id="ventaok-total" style="font-size:27px;font-weight:800;color:var(--g);margin:6px 0 18px"></div>
+    <button onclick="imprimirRecibo()" class="abtn abtn-g" style="width:100%;margin-bottom:9px"><i class="ti ti-printer"></i> Imprimir recibo</button>
+    <button onclick="cerrarVentaOk()" class="abtn abtn-gray" style="width:100%">Listo</button>
+  </div>
+</div>
+
 <script>
 // ── CONFIGURACIÓN DEL SERVIDOR ────────────────────────────────────────────────
 // Cuando tengas el servidor, cambia null por la URL:
@@ -1091,6 +1121,7 @@ if('serviceWorker' in navigator){
 
 let CONFIG={proveedor_1:'',proveedor_2:'',proveedor_3:'',proveedor_4:'',manager_bloqueado:'0'};
 function nombreRol(r=role){
+  if(r==='trabajador') return 'Trabajador';
   const nom=(r==='owner'?CONFIG.nombre_owner:CONFIG.nombre_manager)||'';
   if(nom.trim()) return nom.trim();
   return r==='manager'?'Encargado':'Dueño';
@@ -1164,6 +1195,7 @@ let envFilter='activos', devFilter='todos', tipoVenta=null;
 function selRole(r){
   document.getElementById('lr-m').classList.toggle('sel',r==='manager');
   document.getElementById('lr-o').classList.toggle('sel',r==='owner');
+  const _t=document.getElementById('lr-t'); if(_t) _t.classList.toggle('sel',r==='trabajador');
   role=r; document.getElementById('lpin').focus();
 }
 function doLogin(){
@@ -1189,9 +1221,9 @@ function iniciarApp(){
   document.getElementById('ls').style.display='none';
   document.getElementById('app').classList.add('on');
   document.getElementById('rchip').textContent=nombreRol();
-  document.getElementById('rchip').className='chip '+(role==='manager'?'chip-m':'chip-o');
-  if(MODO_SERVIDOR) cargarDatosServidor().then(()=>{buildNav();goTo('home');});
-  else {buildNav();goTo('home');}
+  document.getElementById('rchip').className='chip '+(role==='owner'?'chip-o':'chip-m');
+  if(MODO_SERVIDOR) cargarDatosServidor().then(()=>{buildNav();goTo(role==='trabajador'?'caja':'home');});
+  else {buildNav();goTo(role==='trabajador'?'caja':'home');}
 }
 async function cargarDatosServidor(){
   toast('Cargando datos del servidor...');
@@ -1264,7 +1296,9 @@ function doLogout(){
 // ── NAV ──────────────────────────────────────────────────────────────────────
 function buildNav(){
   const nav=document.getElementById('bnav');
-  const tabs=role==='manager'
+  const tabs=role==='trabajador'
+    ?[{id:'caja',icon:'ti-shopping-cart',label:'Caja'}]
+    :role==='manager'
     ?[{id:'home',icon:'ti-home',label:'Inicio'},{id:'misventas',icon:'ti-cash',label:'Ventas'},{id:'pedido',icon:'ti-clipboard-list',label:'Pedir'},{id:'stock',icon:'ti-box',label:'Stock'},{id:'caja',icon:'ti-report-money',label:'Caja'}]
     :[{id:'home',icon:'ti-home',label:'Inicio'},{id:'misventas',icon:'ti-cash',label:'Ventas'},{id:'stock',icon:'ti-box',label:'Stock'},{id:'pedido',icon:'ti-clipboard-list',label:'Pedir'},{id:'caja',icon:'ti-report-money',label:'Caja'},{id:'mas',icon:'ti-dots',label:'Más'}];
   nav.innerHTML=tabs.map(t=>`<button class="ni" id="ni-${t.id}" onclick="goTo('${t.id}')"><i class="ti ${t.icon}"></i><span>${t.label}</span></button>`).join('');
@@ -3049,6 +3083,7 @@ async function confirmarCarrito(){
       canal, cliente, cedula, telefono,
       pagos: carritoPagos.map(p=>{ const met=METODOS_PAGO[p.metodo]; const fac=esEfectivoMetodo(p.metodo)?_ratioCash:1; const o={metodo:p.metodo, monto:+(+p.monto*fac).toFixed(2)}; if(met&&met.bs){ o.tasa=tasaActual(); o.tasa_tipo=tasaElegida; } if(met&&met.otra){ o.tasa=+p.tasa||0; o.moneda=p.moneda||'Otra'; } if(p.referencia && String(p.referencia).trim()) o.referencia=String(p.referencia).trim(); return o; }).filter(o=>o.monto>0.005)
     };
+    const _rec={items:carrito.map(it=>({nombre:it.equipo,talla:it.talla,cant:it.cant,sub:+(it.precioUnit*it.cant*_dr).toFixed(2)})),total:carritoTotalCobrar(),pagos:carritoPagos.filter(p=>(+p.monto||0)>0).map(p=>({metodo:(METODOS_PAGO[p.metodo]?.label||p.metodo),monto:+p.monto||0})),cliente,fecha:new Date(),cajero:(role==='owner'?(CONFIG.nombre_owner||'Dueño'):role==='manager'?(CONFIG.nombre_manager||'Encargado'):'Trabajador')};
     const resp = await apiCall('POST','/ventas/carrito',payload);
     if(resp && resp.ventas){
       closeM('m-carrito');
@@ -3057,6 +3092,8 @@ async function confirmarCarrito(){
       if(curPage==='misventas') renderMisVentas();
       if(curPage==='stock') renderStock();
       if(curPage==='home') renderHome();
+      if(curPage==='caja') renderCaja();
+      _rec.numero=resp.numero_venta||''; mostrarVentaOk(_rec);
     } else {
       toast(resp && resp.error ? resp.error : 'No se pudo registrar la venta');
     }
@@ -3068,6 +3105,23 @@ async function confirmarCarrito(){
   }
 }
 
+let _ultimoRecibo=null;
+function cerrarVentaOk(){ const o=document.getElementById('ventaok'); if(o) o.style.display='none'; }
+function mostrarVentaOk(rec){
+  _ultimoRecibo=rec;
+  const n=document.getElementById('ventaok-num'); if(n) n.textContent = rec.numero?('Venta '+rec.numero):'';
+  const t=document.getElementById('ventaok-total'); if(t) t.textContent = fmt(rec.total);
+  const o=document.getElementById('ventaok'); if(o) o.style.display='flex';
+}
+function imprimirRecibo(){
+  const r=_ultimoRecibo; if(!r) return;
+  const f=r.fecha||new Date();
+  const fh=f.toLocaleDateString('es-VE')+' '+f.toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'});
+  const items=r.items.map(it=>`<div class="rc-row"><span>${it.cant} x ${it.nombre}${(it.talla&&it.talla!=='—'&&it.talla!=='U')?(' '+it.talla):''}</span><span>${fmt(it.sub)}</span></div>`).join('');
+  const pagos=(r.pagos||[]).map(p=>`<div class="rc-row rc-sm"><span>${p.metodo}</span><span>${fmt(p.monto)}</span></div>`).join('');
+  document.getElementById('recibo-print').innerHTML=`<div class="rc-c rc-b" style="font-size:16px">${(MARCA.nombre||'').toUpperCase()}</div><div class="rc-c rc-sm">C.A · El Vigía, Mérida</div><hr class="rc-hr"><div class="rc-sm">${fh}${r.numero?(' · '+r.numero):''}</div>${r.cajero?`<div class="rc-sm">Atendió: ${r.cajero}</div>`:''}${r.cliente?`<div class="rc-sm">Cliente: ${r.cliente}</div>`:''}<hr class="rc-hr">${items}<hr class="rc-hr"><div class="rc-row rc-big"><span>TOTAL</span><span>${fmt(r.total)}</span></div>${pagos?`<div style="margin-top:4px">${pagos}</div>`:''}<hr class="rc-hr"><div class="rc-c rc-sm">¡Gracias por su compra!</div><div class="rc-c rc-sm">Vuelva pronto</div>`;
+  window.print();
+}
 function openVentaModal(){
   tipoVenta=null; modoVenta=null; impEditadoManual=false;
   // Reset campos
@@ -3816,7 +3870,25 @@ async function eliminarTx(id){
 }
 
 // ── CIERRE DE CAJA ────────────────────────────────────────────────────────────
+function renderCajaTrabajador(){
+  const cont=document.getElementById('caja-c'); if(!cont) return;
+  const h=hoy();
+  const vHoy=ventas.filter(v=>String(v.fecha)===h);
+  const totHoy=vHoy.reduce((s,v)=>s+(+v.imp||0),0);
+  const lista=vHoy.length?('<div class="stitle" style="margin:18px 0 8px">Ventas de hoy</div>'+vHoy.slice().reverse().slice(0,15).map(v=>`<div class="li"><div class="libody"><div class="liname">${v.equipo||'Venta'}${v.talla&&v.talla!=='\u2014'&&v.talla!=='U'?(' \u00b7 '+v.talla):''}</div><div class="lisub" style="font-size:11.5px;color:var(--txm)">${v.canal||''}</div></div><div class="liright" style="font-weight:800;color:var(--g)">${fmt(+v.imp||0)}</div></div>`).join('')):'';
+  cont.innerHTML=`
+    <div class="card" style="text-align:center;padding:24px 20px;margin-bottom:16px">
+      <div style="font-size:11.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txm)">Vendido en tu turno \u00b7 hoy</div>
+      <div style="font-size:38px;font-weight:800;color:var(--g);margin:6px 0 2px">${fmt(totHoy)}</div>
+      <div style="font-size:13px;color:var(--txm)">${vHoy.length} venta${vHoy.length===1?'':'s'} registrada${vHoy.length===1?'':'s'}</div>
+    </div>
+    <button class="abtn abtn-g" onclick="abrirCarrito()" style="width:100%;padding:18px;font-size:17px;margin-bottom:12px"><i class="ti ti-shopping-cart"></i> Registrar venta</button>
+    <button class="abtn abtn-gray" onclick="imprimirRecibo()" style="width:100%"><i class="ti ti-printer"></i> Reimprimir \u00faltimo recibo</button>
+    ${lista}
+  `;
+}
 function renderCaja(){
+  if(role==='trabajador'){ renderCajaTrabajador(); return; }
   const cont=document.getElementById('caja-c');
   const ahora=new Date();
   const hoyStr=hoy();
