@@ -28,6 +28,7 @@ class CamisetaController extends Controller
             'proveedor_id' => 'required|integer|between:1,4',
             'precio'       => 'nullable|numeric|min:0',
             'precio2'      => 'nullable|numeric|min:0',
+            'color'        => 'nullable|string|max:40',
         ]);
 
         $tallas = $request->input('tallas', []);
@@ -52,6 +53,7 @@ class CamisetaController extends Controller
             'proveedor_id'  => $request->proveedor_id,
             'precio'        => $request->input('precio'),
             'precio2'       => $request->input('precio2'),
+            'color'         => $request->input('color'),
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);
@@ -86,6 +88,7 @@ class CamisetaController extends Controller
             'proveedor_id' => $request->input('proveedor_id', $camiseta->proveedor_id),
             'precio'       => $request->input('precio', $camiseta->precio),
             'precio2'      => $request->input('precio2', $camiseta->precio2),
+            'color'        => $request->input('color', $camiseta->color),
             'updated_at'   => now(),
         ]);
 
@@ -203,6 +206,7 @@ class CamisetaController extends Controller
             'prov'   => (int)$c->proveedor_id,
             'precio' => isset($c->precio) && $c->precio !== null ? (float)$c->precio : null,
             'precio2' => isset($c->precio2) && $c->precio2 !== null ? (float)$c->precio2 : null,
+            'color' => $c->color ?? null,
         ];
     }
 }
