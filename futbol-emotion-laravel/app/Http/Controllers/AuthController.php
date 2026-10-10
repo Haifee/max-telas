@@ -15,8 +15,9 @@ class AuthController extends Controller
     private function pines(): array
     {
         return [
-            'manager' => (string) config('tienda.pin_manager'),
-            'owner'   => (string) config('tienda.pin_owner'),
+            'manager'     => (string) config('tienda.pin_manager'),
+            'owner'       => (string) config('tienda.pin_owner'),
+            'trabajador'  => (string) config('tienda.pin_trabajador'),
         ];
     }
 
