@@ -13,6 +13,7 @@ return [
 
     'pin_manager' => env('PIN_MANAGER', '1515'),
     'pin_owner'   => env('PIN_OWNER', '2828'),
+    'pin_trabajador' => env('PIN_TRABAJADOR', '3737'),
 
     /*
     |--------------------------------------------------------------------------
