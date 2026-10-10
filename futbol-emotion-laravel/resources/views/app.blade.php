@@ -944,7 +944,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     <input class="fi" id="nc-equipo" placeholder="Ej: Camisa escolar, Licuadora Oster…">
     <label class="fl">Marca <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
     <input class="fi" id="nc-marca" placeholder="Ej: Gef, Oster, Ovejita…">
-    <label class="fl">Color <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
+    <label class="fl">Color</label>
     <input class="fi" id="nc-color" placeholder="Ej: Blanco, Azul, Negro…">
 
     <div class="frow" id="nc-camposcam" style="display:none">
@@ -2459,7 +2459,7 @@ function filtrarCamisetas(q){
   const tokens = normalizarTxt(q).split(/\s+/).filter(Boolean);
   const pref = normalizarTxt(q).trim();
   const scored = camisetas.map(c=>{
-    const campos = normalizarTxt([c.equipo,c.tipo,c.temp,c.categoria,nombreProv(c.prov)].filter(Boolean).join(' '));
+    const campos = normalizarTxt([c.equipo,c.color,c.tipo,c.temp,c.categoria,nombreProv(c.prov)].filter(Boolean).join(' '));
     const eq = normalizarTxt(c.equipo);
     let hits=0; for(const tk of tokens){ if(campos.includes(tk)) hits++; }
     return {c, hits, eq, starts:(eq.startsWith(pref)||campos.includes(pref))?1:0};
@@ -2481,31 +2481,7 @@ function limpiarBusquedaStock(){
   stkQuery='';
   renderStock();
 }
-function renderStock(){
-  const cont=document.getElementById('stk-c');
-  const criticos=camisetas.filter(c=>stockStatus(c)==='critico');
-  const totalInv=camisetas.reduce((sm,c)=>sm+Object.values(c.tallas).reduce((a,b)=>a+b,0),0);
-  cont.innerHTML=`
-    <div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div>
-        <div style="font-size:11px;color:var(--txm);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Total en inventario</div>
-        <div style="font-size:24px;font-weight:800">${totalInv} <span style="font-size:13px;font-weight:700;color:var(--txm)">unidades</span></div>
-      </div>
-      <div style="text-align:right;font-size:13px;color:var(--txm);font-weight:700">${camisetas.length} modelo${camisetas.length!==1?'s':''}</div>
-    </div>
-    ${criticos.length?`<div class="abox abox-r" style="margin-bottom:12px"><i class="ti ti-alert-triangle"></i><div><div class="abox-title">Stock crítico — reponer urgente</div><div class="abox-sub">${criticos.map(c=>nombreProducto(c)).join(' · ')}</div></div></div>`:''}
-    <button class="abtn abtn-g" onclick="abrirScannerInventario()" style="margin-top:0;margin-bottom:9px"><i class="ti ti-scan"></i> Escanear mercancía (entrada de stock)</button>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px">
-      <button class="abtn abtn-gray abtn-sm" onclick="abrirNuevaCamiseta()" style="margin-top:0"><i class="ti ti-plus"></i> Nuevo producto</button>
-      <button class="abtn abtn-gray abtn-sm" onclick="abrirCarrito()" style="margin-top:0"><i class="ti ti-shopping-cart"></i> Registrar venta</button>
-    </div>
-    <div style="position:relative;margin-bottom:14px">
-      <i class="ti ti-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--txh);font-size:17px"></i>
-      <input class="fi" id="stk-search" placeholder="Buscar: equipo, tipo, temporada, proveedor…" oninput="filtrarStock()" style="padding-left:38px;margin:0" value="${stkQuery.replace(/"/g,'&quot;')}">
-      ${stkQuery?`<button onclick="limpiarBusquedaStock()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--txh);font-size:18px"><i class="ti ti-x"></i></button>`:''}
-    </div>
-    ${camisetas.length===0?`<div class="empty"><i class="ti ti-box"></i><p>Sin productos en inventario.<br>Pulsa "Nuevo producto" para empezar.</p></div>`:''}
-    ${(()=>{const lista=filtrarCamisetas(stkQuery);return lista.length===0&&camisetas.length>0?`<div class="empty"><i class="ti ti-search-off"></i><p>Nada coincide con "${stkQuery}"</p></div>`:(stkQuery.trim()?`<div style="font-size:12px;color:var(--txm);font-weight:700;margin-bottom:8px">${lista.length} resultado${lista.length!==1?'s':''}</div>`:'')+'<div class="stock-grid">'+lista.map(c=>{
+function cardIndividual(c){
       const s=stockStatus(c);
       const clr=s==='ok'?'var(--g)':s==='bajo'?'var(--a)':'var(--r)';
       const lbl=s==='ok'?'OK':s==='bajo'?'Stock bajo':'Crítico';
@@ -2534,7 +2510,66 @@ function renderStock(){
           <button class="abtn abtn-g abtn-sm" style="font-size:12px" onclick="pedirEste(${c.id})"><i class="ti ti-clipboard-list"></i> Pedir</button>
         </div>
       </div>`;
-    }).join('')+'</div>'})()}`;
+    }
+function matrizCard(nombre, grupo){
+  const orden=['S','M','L','XL','XXL','10','12','14','16'];
+  let cols=orden.filter(t=>grupo.some(c=>(c.tallas[t]||0)>0));
+  if(!cols.length) cols=['S','M','L','XL','XXL'];
+  const totalG=grupo.reduce((a,c)=>a+Object.values(c.tallas).reduce((x,y)=>x+y,0),0);
+  const marca=(grupo.find(c=>c.temp&&c.temp!=='\u2014')||{}).temp||'';
+  const heads=cols.map(t=>`<th style="padding:7px 4px;font-size:11px;color:var(--txm);font-weight:700;text-align:center">${t}</th>`).join('');
+  const filas=grupo.map(c=>{
+    const tot=Object.values(c.tallas).reduce((a,b)=>a+b,0);
+    const cells=cols.map(t=>{const v=c.tallas[t]||0;return `<td style="text-align:center;padding:9px 4px;font-weight:700;color:${v===0?'var(--r)':v<c.min?'var(--a)':'var(--tx)'}">${v}</td>`}).join('');
+    return `<tr onclick="editarCamiseta(${c.id})" style="cursor:pointer;border-top:1px solid var(--gray)"><td style="padding:9px 10px;font-weight:700;white-space:nowrap">${c.color||'\u2014'}</td>${cells}<td style="text-align:right;padding:9px 10px;font-weight:800;color:var(--g)">${tot}</td></tr>`;
+  }).join('');
+  return `<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div><div style="font-size:17px;font-weight:800">${nombre}</div><div style="font-size:12px;color:var(--txm)">\ud83d\udc55 Ropa${marca?' \u00b7 '+marca:''} \u00b7 ${grupo.length} color${grupo.length!==1?'es':''}</div></div>
+      <div style="text-align:right"><div style="font-size:21px;font-weight:800">${totalG} <span style="font-size:12px;font-weight:700;color:var(--txm)">UND</span></div></div>
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+      <tr style="background:var(--gray)"><th style="text-align:left;padding:7px 10px;font-size:11px;color:var(--txm)">Color</th>${heads}<th style="text-align:right;padding:7px 10px;font-size:11px;color:var(--txm)">Total</th></tr>
+      ${filas}
+    </table></div>
+    <div style="font-size:11px;color:var(--txh);margin-top:8px"><i class="ti ti-hand-finger"></i> Toca un color para editarlo o ajustar su stock</div>
+  </div>`;
+}
+function construirStockHTML(lista){
+  const porGrupo={};
+  lista.forEach(c=>{ if(esCamiseta(c)&&c.color){ (porGrupo[c.equipo]=porGrupo[c.equipo]||[]).push(c); } });
+  const emitido=new Set(); let html='';
+  lista.forEach(c=>{
+    if(esCamiseta(c)&&c.color){ if(!emitido.has(c.equipo)){ emitido.add(c.equipo); html+=matrizCard(c.equipo, porGrupo[c.equipo]); } }
+    else { html+=cardIndividual(c); }
+  });
+  return html;
+}
+function renderStock(){
+  const cont=document.getElementById('stk-c');
+  const criticos=camisetas.filter(c=>stockStatus(c)==='critico');
+  const totalInv=camisetas.reduce((sm,c)=>sm+Object.values(c.tallas).reduce((a,b)=>a+b,0),0);
+  cont.innerHTML=`
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <div style="font-size:11px;color:var(--txm);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Total en inventario</div>
+        <div style="font-size:24px;font-weight:800">${totalInv} <span style="font-size:13px;font-weight:700;color:var(--txm)">unidades</span></div>
+      </div>
+      <div style="text-align:right;font-size:13px;color:var(--txm);font-weight:700">${camisetas.length} modelo${camisetas.length!==1?'s':''}</div>
+    </div>
+    ${criticos.length?`<div class="abox abox-r" style="margin-bottom:12px"><i class="ti ti-alert-triangle"></i><div><div class="abox-title">Stock crítico — reponer urgente</div><div class="abox-sub">${criticos.map(c=>nombreProducto(c)).join(' · ')}</div></div></div>`:''}
+    <button class="abtn abtn-g" onclick="abrirScannerInventario()" style="margin-top:0;margin-bottom:9px"><i class="ti ti-scan"></i> Escanear mercancía (entrada de stock)</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px">
+      <button class="abtn abtn-gray abtn-sm" onclick="abrirNuevaCamiseta()" style="margin-top:0"><i class="ti ti-plus"></i> Nuevo producto</button>
+      <button class="abtn abtn-gray abtn-sm" onclick="abrirCarrito()" style="margin-top:0"><i class="ti ti-shopping-cart"></i> Registrar venta</button>
+    </div>
+    <div style="position:relative;margin-bottom:14px">
+      <i class="ti ti-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--txh);font-size:17px"></i>
+      <input class="fi" id="stk-search" placeholder="Buscar: nombre, color, marca, proveedor…" oninput="filtrarStock()" style="padding-left:38px;margin:0" value="${stkQuery.replace(/"/g,'&quot;')}">
+      ${stkQuery?`<button onclick="limpiarBusquedaStock()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--txh);font-size:18px"><i class="ti ti-x"></i></button>`:''}
+    </div>
+    ${camisetas.length===0?`<div class="empty"><i class="ti ti-box"></i><p>Sin productos en inventario.<br>Pulsa "Nuevo producto" para empezar.</p></div>`:''}
+    ${(()=>{const lista=filtrarCamisetas(stkQuery);return lista.length===0&&camisetas.length>0?`<div class="empty"><i class="ti ti-search-off"></i><p>Nada coincide con "${stkQuery}"</p></div>`:(stkQuery.trim()?`<div style="font-size:12px;color:var(--txm);font-weight:700;margin-bottom:8px">${lista.length} resultado${lista.length!==1?'s':''}</div>`:'')+'<div class="stock-grid">'+construirStockHTML(lista)+'</div>'})()}`;
 }
 function abrirNuevaCamiseta(){
   document.getElementById('ncam-title').textContent='Nuevo producto';
@@ -2590,7 +2625,8 @@ async function saveNuevaCamiseta(){
   const equipo=document.getElementById('nc-equipo').value.trim();
   const color=document.getElementById('nc-color').value.trim();
   const esOtro=catProducto==='otro';
-  if(!equipo){toast(esOtro?'Escribe el nombre del producto':'Escribe el nombre del producto');return}
+  if(!equipo){toast('Escribe el nombre del producto');return}
+  if(!esOtro && !color){toast('Escribe el color de la prenda');return}
   let categoria='camiseta';
   if(esOtro){
     categoria=document.getElementById('nc-categoria').value.trim();
@@ -4699,8 +4735,8 @@ function abrirNomina(){
   if(!lista.length){
     cont.innerHTML=`<div style="text-align:center;padding:12px 4px">
       <i class="ti ti-users" style="font-size:40px;color:var(--txh)"></i>
-      <p style="font-size:13.5px;color:var(--txm);margin:10px 0 14px">Todavía no tienes personal registrado. Agrégalo en Ajustes para poder pagarle.</p>
-      <button class="abtn abtn-g" onclick="closeM('m-nomina');goTo('ajustes')"><i class="ti ti-settings"></i> Ir a Ajustes</button>
+      <p style="font-size:13.5px;color:var(--txm);margin:10px 0 14px">Todavía no tienes personal registrado. Agrégalo en «Personal y nómina» para poder pagarle.</p>
+      <button class="abtn abtn-g" onclick="closeM('m-nomina');goTo('nomina')"><i class="ti ti-users"></i> Ir a Personal y nómina</button>
     </div>`;
     openM('m-nomina'); return;
   }
