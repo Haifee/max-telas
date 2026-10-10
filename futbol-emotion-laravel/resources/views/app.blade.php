@@ -944,6 +944,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     <input class="fi" id="nc-equipo" placeholder="Ej: Camisa escolar, Licuadora Oster…">
     <label class="fl">Marca <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
     <input class="fi" id="nc-marca" placeholder="Ej: Gef, Oster, Ovejita…">
+    <label class="fl">Color <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
+    <input class="fi" id="nc-color" placeholder="Ej: Blanco, Azul, Negro…">
 
     <div class="frow" id="nc-camposcam" style="display:none">
       <div>
@@ -1137,7 +1139,7 @@ let catProducto='camiseta';
 function esCamiseta(c){ return !c.categoria || c.categoria==='camiseta'; }
 function tallasDe(c){ return esCamiseta(c) ? TALLAS : ['U']; }
 function nombreProducto(c){
-  if(esCamiseta(c)) return (c.temp && c.temp!=='—') ? `${c.equipo} · ${c.temp}` : c.equipo;
+  if(esCamiseta(c)) return c.equipo + (c.color ? ' · '+c.color : '');
   const cat=(c.categoria||'').trim();
   return (!cat || cat.toLowerCase()===String(c.equipo).trim().toLowerCase()) ? c.equipo : `${c.equipo} (${cat})`;
 }
@@ -2513,7 +2515,7 @@ function renderStock(){
       return `<div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
           <div>
-            <div style="font-size:17px;font-weight:800">${c.equipo}</div>
+            <div style="font-size:17px;font-weight:800">${nombreProducto(c)}</div>
             <div style="font-size:12px;color:var(--txm)">${esCamiseta(c)?`👕 Ropa${c.temp&&c.temp!=='—'?' · '+c.temp:''}`:`📦 ${c.categoria}${c.temp&&c.temp!=='—'?' · '+c.temp:''}`} · ${nombreProv(c.prov)}</div>
           </div>
           <div style="text-align:right">
@@ -2541,6 +2543,7 @@ function abrirNuevaCamiseta(){
   setCatProducto('camiseta');
   document.getElementById('nc-equipo').value='';
   document.getElementById('nc-marca').value='';
+  document.getElementById('nc-color').value='';
   document.getElementById('nc-min').value='5';
   document.getElementById('nc-precio').value='';
   document.getElementById('nc-precio2').value='';
@@ -2567,6 +2570,7 @@ function editarCamiseta(id){
   document.getElementById('nc-categoria').value=esCamiseta(c)?'':c.categoria;
   document.getElementById('nc-equipo').value=c.equipo;
   document.getElementById('nc-marca').value=(c.temp&&c.temp!=='—')?c.temp:'';
+  document.getElementById('nc-color').value=c.color||'';
   document.getElementById('nc-min').value=c.min;
   document.getElementById('nc-precio').value=c.precio!=null?c.precio:'';
   document.getElementById('nc-precio2').value=c.precio2!=null?c.precio2:'';
@@ -2584,6 +2588,7 @@ function editarCamiseta(id){
 }
 async function saveNuevaCamiseta(){
   const equipo=document.getElementById('nc-equipo').value.trim();
+  const color=document.getElementById('nc-color').value.trim();
   const esOtro=catProducto==='otro';
   if(!equipo){toast(esOtro?'Escribe el nombre del producto':'Escribe el nombre del producto');return}
   let categoria='camiseta';
@@ -2603,6 +2608,7 @@ async function saveNuevaCamiseta(){
   const data={
     equipo,
     categoria,
+    color,
     temp:(document.getElementById('nc-marca').value.trim()||'—'),
     tipo:'Otro',
     tallas,
@@ -2612,7 +2618,7 @@ async function saveNuevaCamiseta(){
     precio2:precio2Val!==''?+precio2Val:null,
   };
   const editId=+document.getElementById('nc-id').value;
-  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2};
+  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,color:data.color};
   if(editId){
     // Editar — optimista: aplica local, cierra y muestra al instante; sincroniza por detrás
     const i=camisetas.findIndex(c=>c.id===editId);
