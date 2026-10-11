@@ -88,6 +88,9 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .ni i{font-size:22px;transition:all .2s}
 .ni.active{color:#2626cc}.ni.active i{color:#2626cc;transform:scale(1.12)}
 .ni.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:28px;height:3px;background:#2626cc;border-radius:3px 3px 0 0}
+body.noche .ni.active{color:#a9abff}
+body.noche .ni.active i{color:#a9abff}
+body.noche .ni.active::after{background:#a9abff}
 .nbadge{position:absolute;top:7px;right:calc(50% - 20px);background:#ef4444;color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;box-shadow:0 2px 6px rgba(239,68,68,.5)}
 
 /* CARDS */
@@ -305,6 +308,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   }
   .ni i{font-size:21px}
   .ni.active{background:var(--gl,#e0e0f8)}
+  body.noche .ni.active{background:rgba(143,144,255,.13)}
   .ni.active::after{display:none}
   .nbadge{top:50%;right:14px;transform:translateY(-50%)}
   .page{padding:28px 40px;max-width:1080px;margin:0 auto}
