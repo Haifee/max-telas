@@ -206,6 +206,99 @@ class CamisetaController extends Controller
         return response()->json(['ok' => true], 201);
     }
 
+    // Mapea un objeto de tallas flexibles a las columnas fijas legacy (las no listadas = 0)
+    private function tallasAColumnas(array $tallas): array
+    {
+        $legacy = ['S'=>'talla_s','M'=>'talla_m','L'=>'talla_l','XL'=>'talla_xl','XXL'=>'talla_xxl','10'=>'talla_10','12'=>'talla_12','14'=>'talla_14','16'=>'talla_16','U'=>'talla_u'];
+        $out = [];
+        foreach ($legacy as $k => $col) { $out[$col] = max(0, (int)($tallas[$k] ?? 0)); }
+        return $out;
+    }
+
+    // Importación masiva desde Excel: el frontend envía los productos ya agrupados.
+    // Hace upsert por (equipo + color + departamento): si existe, actualiza; si no, crea.
+    // Todo dentro de una transacción (si algo falla, no queda nada a medias).
+    public function importar(Request $request)
+    {
+        $request->validate([
+            'productos'               => 'required|array|min:1',
+            'productos.*.equipo'      => 'required|string|max:100',
+            'productos.*.tallas'      => 'required|array',
+        ]);
+
+        $items = $request->input('productos');
+        $creados = 0; $actualizados = 0; $errores = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($items as $idx => $p) {
+                $equipo = trim((string)($p['equipo'] ?? ''));
+                if ($equipo === '') { $errores[] = 'Fila '.($idx+1).': sin nombre'; continue; }
+
+                $categoria    = trim((string)($p['categoria'] ?? 'camiseta')) ?: 'camiseta';
+                $color        = isset($p['color']) && $p['color'] !== '' ? mb_substr(trim((string)$p['color']),0,40) : null;
+                $departamento = isset($p['departamento']) && $p['departamento'] !== '' ? mb_substr(trim((string)$p['departamento']),0,40) : null;
+                $temp         = isset($p['temporada']) && $p['temporada'] !== '' ? mb_substr(trim((string)$p['temporada']),0,60) : '—';
+                $tallas       = is_array($p['tallas'] ?? null) ? array_map(fn($v)=>max(0,(int)$v), $p['tallas']) : [];
+                $precio       = isset($p['precio'])  && $p['precio']  !== '' ? (float)$p['precio']  : null;
+                $precio2      = isset($p['precio2']) && $p['precio2'] !== '' ? (float)$p['precio2'] : null;
+                $min          = (int)($p['min'] ?? 5); if ($min < 0) $min = 0;
+                $prov         = (int)($p['prov'] ?? 1); if ($prov < 1 || $prov > 4) $prov = 1;
+
+                $cols = $this->tallasAColumnas($tallas);
+
+                // Buscar un producto equivalente para no duplicar
+                $q = DB::table('camisetas')->where('equipo', $equipo);
+                if ($color !== null) $q->where('color', $color); else $q->whereNull('color');
+                if ($departamento !== null) $q->where('departamento', $departamento);
+                $ex = $q->first();
+
+                if ($ex) {
+                    DB::table('camisetas')->where('id', $ex->id)->update(array_merge($cols, [
+                        'tallas_json'  => json_encode($tallas, JSON_UNESCAPED_UNICODE),
+                        'temporada'    => $temp,
+                        'categoria'    => $categoria,
+                        'color'        => $color,
+                        'departamento' => $departamento,
+                        'stock_minimo' => $min,
+                        'proveedor_id' => $prov,
+                        'precio'       => $precio,
+                        'precio2'      => $precio2,
+                        'updated_at'   => now(),
+                    ]));
+                    $actualizados++;
+                } else {
+                    DB::table('camisetas')->insert(array_merge($cols, [
+                        'equipo'       => $equipo,
+                        'temporada'    => $temp,
+                        'tipo'         => 'Otro',
+                        'categoria'    => $categoria,
+                        'color'        => $color,
+                        'departamento' => $departamento,
+                        'tallas_json'  => json_encode($tallas, JSON_UNESCAPED_UNICODE),
+                        'stock_minimo' => $min,
+                        'proveedor_id' => $prov,
+                        'precio'       => $precio,
+                        'precio2'      => $precio2,
+                        'created_at'   => now(),
+                        'updated_at'   => now(),
+                    ]));
+                    $creados++;
+                }
+            }
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Error al importar: '.$e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'creados'      => $creados,
+            'actualizados' => $actualizados,
+            'errores'      => $errores,
+        ]);
+    }
+
     // Convierte el formato de la BD al formato que usa el frontend
     private function formatear($c)
     {
