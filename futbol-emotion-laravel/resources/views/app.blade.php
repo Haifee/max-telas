@@ -1008,6 +1008,7 @@ body.noche .ni.active::after{background:#a9abff}
 
     <input type="hidden" id="nc-id">
     <button class="abtn abtn-g" onclick="saveNuevaCamiseta()"><i class="ti ti-check"></i> Guardar en inventario</button>
+    <button class="abtn abtn-gray" id="nc-btn-seguir" onclick="saveNuevaCamiseta(true)" style="margin-top:8px"><i class="ti ti-plus"></i> Guardar y agregar otro color</button>
     <button class="abtn abtn-r" id="nc-btn-borrar" onclick="borrarCamiseta()" style="display:none;margin-top:8px"><i class="ti ti-trash"></i> Eliminar este producto</button>
   </div>
 </div>
@@ -1158,6 +1159,7 @@ function setCatProducto(cat){
   document.getElementById('nc-chip-otro').style.cssText='padding:11px;border-radius:11px;cursor:pointer;font-size:13px;font-weight:800;'+(!esCam?'border:2px solid var(--g);background:var(--gl);color:var(--gd)':'border:2px solid var(--grayb);background:var(--card);color:var(--txm)');
   document.getElementById('nc-cat-wrap').style.display=esCam?'none':'block';
   document.getElementById('nc-depto-ropa-wrap').style.display=esCam?'block':'none';
+  {const _b=document.getElementById('nc-btn-seguir'); if(_b)_b.style.display=esCam?'block':'none';}
   document.getElementById('nc-camposcam').style.display='none';
   document.getElementById('nc-tallas-cam').style.display=esCam?'block':'none';
   document.getElementById('nc-tallas-otro').style.display=esCam?'none':'block';
@@ -2612,6 +2614,7 @@ function editarCamiseta(id){
   const c=camisetas.find(x=>x.id===id);if(!c)return;
   document.getElementById('ncam-title').textContent=esCamiseta(c)?'Editar producto':'Editar producto';
   setCatProducto(esCamiseta(c)?'camiseta':'otro');
+  {const _b=document.getElementById('nc-btn-seguir'); if(_b)_b.style.display='none';}
   document.getElementById('nc-categoria').value=esCamiseta(c)?'':c.categoria;
   document.getElementById('nc-equipo').value=c.equipo;
   document.getElementById('nc-marca').value=(c.temp&&c.temp!=='—')?c.temp:'';
@@ -2632,7 +2635,7 @@ function editarCamiseta(id){
   TALLAS_TODAS.forEach(t=>{document.getElementById('nc-'+t).oninput=actualizarTotalNC});
   openM('m-nueva-cam');
 }
-async function saveNuevaCamiseta(){
+async function saveNuevaCamiseta(seguir=false){
   const equipo=document.getElementById('nc-equipo').value.trim();
   const color=document.getElementById('nc-color').value.trim();
   const esOtro=catProducto==='otro';
@@ -2695,17 +2698,26 @@ async function saveNuevaCamiseta(){
     camisetas.push(data);
     if(!MODO_SERVIDOR) sd('camisetas',camisetas);
     registrarActividad('stock',esOtro?`Nuevo producto: ${equipo} (${categoria})`:`Nuevo producto: ${equipo} ${data.tipo}`,esOtro?'':`${data.temp}`);
-    closeM('m-nueva-cam');
     if(curPage==='stock') renderStock();
-    // La asociación del código va por detrás (no bloquea el guardado)
-    if(pendingCodigo && MODO_SERVIDOR){
-      const _cod=pendingCodigo, _id=data.id, _tal=pendingTalla||'M';
-      apiCall('POST','/camisetas/barcode',{codigo:_cod,camiseta_id:_id,talla:_tal})
-        .then(()=>toast(`${equipo} añadida ✓ Código asociado a talla ${_tal}`))
-        .catch(()=>toast(`${equipo} añadida ✓ pero el código no se pudo asociar`));
-      pendingCodigo=null; pendingTalla=null;
+    if(seguir && !esOtro){
+      // Guardar y agregar otro color: mantener abierto, limpiar solo color y tallas
+      document.getElementById('nc-color').value='';
+      TALLAS_TODAS.forEach(t=>{const el=document.getElementById('nc-'+t); if(el)el.value=0;});
+      actualizarTotalNC();
+      document.getElementById('nc-color').focus();
+      toast(`✓ ${equipo}${color?' · '+color:''} guardado · agrega el siguiente color`);
     } else {
-      toast(`${equipo} añadida al inventario ✓`);
+      closeM('m-nueva-cam');
+      // La asociación del código va por detrás (no bloquea el guardado)
+      if(pendingCodigo && MODO_SERVIDOR){
+        const _cod=pendingCodigo, _id=data.id, _tal=pendingTalla||'M';
+        apiCall('POST','/camisetas/barcode',{codigo:_cod,camiseta_id:_id,talla:_tal})
+          .then(()=>toast(`${equipo} añadida ✓ Código asociado a talla ${_tal}`))
+          .catch(()=>toast(`${equipo} añadida ✓ pero el código no se pudo asociar`));
+        pendingCodigo=null; pendingTalla=null;
+      } else {
+        toast(`${equipo} añadida al inventario ✓`);
+      }
     }
   }catch(e){
     toast('No se pudo guardar: '+e.message);
