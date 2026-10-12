@@ -29,6 +29,7 @@ Route::middleware('auth.pin')->group(function () {
     Route::post('/camisetas/barcode', [CamisetaController::class, 'asociarCodigo']);
     Route::get('/camisetas',          [CamisetaController::class, 'index']);
     Route::post('/camisetas',         [CamisetaController::class, 'store']);
+    Route::post('/camisetas/importar',[CamisetaController::class, 'importar'])->middleware('ensure.owner');
     Route::put('/camisetas/{id}',     [CamisetaController::class, 'update']);
     Route::delete('/camisetas/{id}',  [CamisetaController::class, 'destroy']);
     Route::put('/camisetas/{id}/stock', [CamisetaController::class, 'ajustarStock']);
