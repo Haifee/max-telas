@@ -4172,6 +4172,47 @@ function renderCajaTrabajador(){
     ${lista}
   `;
 }
+function metodoEsEfectivo(k){ return k==='efectivo_usd'||k==='efectivo_bs'||k==='efectivo_otra'; }
+// Agrupa los pagos de un día: por método, y cuánto efectivo físico debe haber en caja.
+function desgloseCaja(fechaStr){
+  const vts=ventas.filter(v=>v.fecha===fechaStr);
+  const agg={}; let efUsd=0, efBs=0, digUsd=0; const efOtra={};
+  vts.forEach(v=>(v.pagos||[]).forEach(p=>{
+    const k=p.metodo||'otro'; const m=METODOS_PAGO[k]; const usd=pagoEnUsd(p);
+    if(!agg[k]) agg[k]={usd:0,bs:0};
+    agg[k].usd+=usd;
+    if(m&&m.bs) agg[k].bs+=(+p.monto||0);
+    if(k==='efectivo_usd') efUsd+=(+p.monto||0);
+    else if(k==='efectivo_bs') efBs+=(+p.monto||0);
+    else if(k==='efectivo_otra'){ const cur=p.moneda||'Otra'; efOtra[cur]=(efOtra[cur]||0)+(+p.monto||0); }
+    else digUsd+=usd;
+  }));
+  const porMetodo=Object.entries(agg).map(([k,o])=>({k,label:(METODOS_PAGO[k]&&METODOS_PAGO[k].label)||k,usd:o.usd,bs:o.bs,ef:metodoEsEfectivo(k)}))
+    .filter(x=>x.usd>0.009||x.bs>0.009).sort((a,b)=>b.usd-a.usd);
+  return {porMetodo, efUsd, efBs, efOtra, digUsd, hayEfectivo:(efUsd>0.009||efBs>0.009||Object.keys(efOtra).length>0)};
+}
+function desgloseCajaHTML(fechaStr){
+  const d=desgloseCaja(fechaStr);
+  if(!d.porMetodo.length) return '';
+  const filas=d.porMetodo.map(x=>{
+    const m=METODOS_PAGO[x.k]||{};
+    const val=(m.bs&&x.bs>0.009)?fmtBs(x.bs):fmt(x.usd);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px"><span style="color:var(--txm)"><i class="ti ${m.icono||'ti-cash'}" style="font-size:14px;color:${x.ef?'var(--g)':'var(--b)'}"></i> ${x.label}</span><span style="font-weight:700">${val}</span></div>`;
+  }).join('');
+  const otras=Object.entries(d.efOtra).map(([c,v])=>`<div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:2px"><span>Efectivo ${c}</span><b>${(+v).toFixed(2)} ${c}</b></div>`).join('');
+  return `
+    <hr style="border:none;border-top:1px solid var(--grayb);margin:12px 0 8px">
+    <div style="font-size:11px;font-weight:800;color:var(--txm);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Cómo se cobró</div>
+    ${filas}
+    <div style="background:var(--gl);border-radius:10px;padding:11px 13px;margin-top:10px">
+      <div style="font-size:11px;font-weight:800;color:var(--gd);text-transform:uppercase;letter-spacing:.3px;margin-bottom:7px"><i class="ti ti-cash"></i> Efectivo que debe haber en caja</div>
+      <div style="display:flex;justify-content:space-between;font-size:15px;margin-bottom:3px"><span style="color:var(--txm)">Dólares</span><b style="color:var(--gd)">${fmt(d.efUsd)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:15px"><span style="color:var(--txm)">Bolívares</span><b style="color:var(--gd)">${fmtBs(d.efBs)}</b></div>
+      ${otras}
+    </div>
+    ${d.digUsd>0.009?`<div style="font-size:11.5px;color:var(--txm);margin-top:8px;text-align:center;line-height:1.4"><i class="ti ti-building-bank"></i> Digital (pago móvil, punto, Zelle…): <b>${fmt(d.digUsd)}</b><br>no va en la caja física</div>`:''}
+  `;
+}
 function renderCaja(){
   if(role==='trabajador'){ renderCajaTrabajador(); return; }
   const cont=document.getElementById('caja-c');
@@ -4261,6 +4302,7 @@ function renderCaja(){
             <span style="font-weight:800;color:${t.tipo==='ingreso'?'var(--g)':'var(--r)'}">${t.tipo==='ingreso'?'+':'-'}${fmt(t.imp)}</span>
           </div>`).join('')}
         `:'<div style="font-size:13px;color:var(--txh);text-align:center;padding:10px">Sin movimientos</div>'}
+        ${clave==='dia'?desgloseCajaHTML(hoyStr):''}
       </div>`;
   }
 
@@ -4516,6 +4558,7 @@ function abrirCierreCaja(){
     <hr style="border:none;border-top:1px solid var(--grayb);margin:8px 0">
     <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Cobrado en $</span><b style="color:var(--gd)">${fmt(money.divisas)}</b></div>
     <div style="display:flex;justify-content:space-between"><span>Cobrado en Bs</span><b style="color:var(--gd)">${fmtBs(money.bs)}</b></div>
+    ${desgloseCajaHTML(hoy())}
     ${d.vts.length===0&&d.ing===0&&d.gas===0?`<div style="background:var(--al);border-radius:9px;padding:9px;margin-top:10px;font-size:12px;color:var(--ad);font-weight:700"><i class="ti ti-alert-circle"></i> Día sin movimientos. Si vendiste algo, regístralo antes de cerrar.</div>`:''}`;
   document.getElementById('cierre-clave').value='';
   document.getElementById('cierre-err').textContent='';
