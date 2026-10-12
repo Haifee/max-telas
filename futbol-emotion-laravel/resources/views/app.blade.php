@@ -998,6 +998,20 @@ body.noche .ni.active::after{background:#a9abff}
   </div>
 </div>
 
+<!-- MODAL: IMPORTAR INVENTARIO DESDE EXCEL -->
+<div class="mbg" id="m-importar">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="mtitle"><span>Importar inventario</span><button class="mclose" onclick="closeM('m-importar')"><i class="ti ti-x"></i></button></div>
+    <p style="font-size:13px;color:var(--txm);margin-bottom:12px">Sube el Excel con la plantilla (una fila por talla). Te muestro un resumen <b>antes</b> de guardar nada.</p>
+    <label for="imp-file" class="abtn abtn-gray" style="display:flex;cursor:pointer;margin-top:0"><i class="ti ti-upload"></i> Elegir archivo Excel</label>
+    <input id="imp-file" type="file" accept=".xlsx,.xls" style="display:none" onchange="importarArchivo(this)">
+    <div id="imp-filename" style="font-size:12.5px;color:var(--txm);margin:8px 0;text-align:center"></div>
+    <div id="imp-preview"></div>
+    <button class="abtn abtn-g" id="imp-confirmar" onclick="confirmarImportar()" style="display:none;margin-top:10px"><i class="ti ti-check"></i> <span id="imp-confirmar-txt">Confirmar importación</span></button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <div id="recibo-print"></div>
@@ -2586,6 +2600,128 @@ function construirStockHTML(lista){
   });
   return html;
 }
+// ── IMPORTADOR DE INVENTARIO (Excel) ─────────────────────────────────────────
+let impProductos=[]; // productos agrupados listos para enviar
+function abrirImportar(){
+  impProductos=[];
+  const f=document.getElementById('imp-file'); if(f) f.value='';
+  document.getElementById('imp-filename').textContent='';
+  document.getElementById('imp-preview').innerHTML='';
+  document.getElementById('imp-confirmar').style.display='none';
+  openM('m-importar');
+}
+async function importarArchivo(input){
+  const file=input.files&&input.files[0]; if(!file) return;
+  document.getElementById('imp-filename').textContent='📄 '+file.name;
+  const prev=document.getElementById('imp-preview');
+  prev.innerHTML='<div style="text-align:center;color:var(--txm);font-size:13px;padding:14px">Leyendo archivo…</div>';
+  document.getElementById('imp-confirmar').style.display='none';
+  try{
+    await asegurarXLSX();
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const hojaNom=wb.SheetNames.includes('Inventario')?'Inventario':wb.SheetNames[wb.SheetNames.length-1];
+    const ws=wb.Sheets[hojaNom];
+    const filas=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+    // localizar la fila de encabezados: "Nombre" en col 0 Y "Departamento" en col 1
+    // (así no confundimos el banner de arriba, que también dice "nombre").
+    let hi=filas.findIndex(r=>r&&String(r[0]||'').toLowerCase().includes('nombre')&&String(r[1]||'').toLowerCase().includes('departamento'));
+    if(hi<0) hi=1;
+    const datos=filas.slice(hi+1);
+    const grupos={};
+    datos.forEach(r=>{
+      if(!r) return;
+      const nombre=String(r[0]||'').trim();
+      const nota=String(r[9]||'').toLowerCase();
+      if(!nombre) return;                  // fila vacía
+      if(nombre.toLowerCase()==='nombre del producto') return; // encabezado colado
+      if(nota.includes('ejemplo')) return; // fila de ejemplo sin borrar
+      const depto=String(r[1]||'').trim();
+      const color=String(r[2]||'').trim();
+      const marca=String(r[3]||'').trim();
+      const talla=String(r[4]==null?'':r[4]).trim().toUpperCase();
+      const cant=parseInt(r[5])||0;
+      const p1=r[6], p2=r[7];
+      const key=[nombre.toLowerCase(),color.toLowerCase(),marca.toLowerCase(),depto.toLowerCase()].join('|');
+      if(!grupos[key]) grupos[key]={equipo:nombre,departamento:depto,color,marca,tallas:{},precio:null,precio2:null};
+      const g=grupos[key];
+      if(g.precio==null && p1!=='' && p1!=null && !isNaN(+p1)) g.precio=+p1;
+      if(g.precio2==null && p2!=='' && p2!=null && !isNaN(+p2)) g.precio2=+p2;
+      if(talla){ g.tallas[talla]=(g.tallas[talla]||0)+cant; }
+      else { g.tallas['U']=(g.tallas['U']||0)+cant; }
+    });
+    impProductos=Object.values(grupos).map(g=>{
+      const conTallas=Object.keys(g.tallas).some(t=>t!=='U'); // sin talla => producto "otro"
+      let tallas=g.tallas;
+      if(conTallas){ delete tallas['U']; }
+      else { tallas={U:Object.values(g.tallas).reduce((a,b)=>a+b,0)}; }
+      return {
+        equipo:g.equipo,
+        categoria: conTallas ? 'camiseta' : (g.departamento||'Otro'),
+        color: g.color||null,
+        departamento: g.departamento||null,
+        temporada: g.marca||'—',
+        tallas,
+        precio:g.precio, precio2:g.precio2,
+        min:5, prov:1,
+      };
+    }).filter(p=>p.equipo);
+    renderPreviewImport(impProductos);
+  }catch(e){
+    prev.innerHTML='<div class="abox abox-r"><i class="ti ti-alert-triangle"></i><div><div class="abox-title">No se pudo leer el archivo</div><div class="abox-sub">'+((e&&e.message)||e)+'</div></div></div>';
+    document.getElementById('imp-confirmar').style.display='none';
+  }
+}
+function renderPreviewImport(prods){
+  const prev=document.getElementById('imp-preview');
+  const btn=document.getElementById('imp-confirmar');
+  if(!prods.length){
+    prev.innerHTML='<div class="abox abox-r"><i class="ti ti-alert-triangle"></i><div><div class="abox-title">No encontré productos</div><div class="abox-sub">Revisa que llenaste la hoja «Inventario» con la plantilla y borraste las filas de ejemplo.</div></div></div>';
+    btn.style.display='none'; return;
+  }
+  const totU=prods.reduce((s,p)=>s+Object.values(p.tallas).reduce((a,b)=>a+b,0),0);
+  const filas=prods.slice(0,60).map(p=>{
+    const ks=Object.keys(p.tallas);
+    const ts=ks.length?ordenarTallas(ks).map(t=>`${t==='U'?'U':t}:${p.tallas[t]}`).join('  '):'—';
+    const precio=p.precio!=null?('$'+p.precio):'—';
+    return `<tr style="border-top:1px solid var(--gray)"><td style="padding:6px 8px;font-weight:700">${p.equipo}${p.color?' · '+p.color:''}</td><td style="padding:6px 8px;color:var(--txm);font-size:11.5px">${p.departamento||''}</td><td style="padding:6px 8px;font-size:11.5px">${ts}</td><td style="padding:6px 8px;text-align:right;font-weight:700">${precio}</td></tr>`;
+  }).join('');
+  prev.innerHTML=`
+    <div class="card" style="margin:4px 0 10px;padding:12px 14px">
+      <div style="font-size:14px;font-weight:800">${prods.length} producto${prods.length!==1?'s':''} · ${totU} unidades</div>
+      <div style="font-size:12px;color:var(--txm);margin-top:2px">Si un producto ya existe (mismo nombre, color y depto), se <b>actualiza</b> en vez de duplicarse.</div>
+    </div>
+    <div style="max-height:260px;overflow:auto;border:1px solid var(--gray);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:var(--gray)"><th style="text-align:left;padding:7px 8px">Producto</th><th style="text-align:left;padding:7px 8px">Depto</th><th style="text-align:left;padding:7px 8px">Tallas</th><th style="text-align:right;padding:7px 8px">P1</th></tr></thead><tbody>${filas}</tbody></table></div>
+    ${prods.length>60?`<div style="font-size:11px;color:var(--txh);margin-top:6px;text-align:center">Mostrando 60 de ${prods.length}. Se guardarán todos.</div>`:''}`;
+  btn.style.display='flex';
+  document.getElementById('imp-confirmar-txt').textContent=`Guardar ${prods.length} producto${prods.length!==1?'s':''}`;
+}
+async function confirmarImportar(){
+  if(!impProductos.length) return;
+  const btn=document.getElementById('imp-confirmar');
+  const txt=document.getElementById('imp-confirmar-txt');
+  const prevTxt=txt.textContent; btn.disabled=true; txt.textContent='Guardando…';
+  try{
+    if(MODO_SERVIDOR){
+      const r=await apiCall('POST','/camisetas/importar',{productos:impProductos});
+      camisetas=await apiCall('GET','/camisetas');
+      closeM('m-importar');
+      let msg=`✓ ${r.creados} creado${r.creados!==1?'s':''}`;
+      if(r.actualizados) msg+=` · ${r.actualizados} actualizado${r.actualizados!==1?'s':''}`;
+      toast(msg);
+      registrarActividad('stock',`Importación de inventario: ${r.creados} nuevos, ${r.actualizados} actualizados`,'');
+    } else {
+      impProductos.forEach(p=>{ p.id=ids.c++; camisetas.push(p); });
+      sd('camisetas',camisetas); closeM('m-importar');
+      toast(`✓ ${impProductos.length} productos importados`);
+    }
+    if(curPage==='stock') renderStock();
+  }catch(e){
+    toast('⚠ No se pudo importar — '+((e&&e.message)||'revisa tu conexión'));
+  }finally{
+    btn.disabled=false; txt.textContent=prevTxt;
+  }
+}
 function renderStock(){
   const cont=document.getElementById('stk-c');
   const criticos=camisetas.filter(c=>stockStatus(c)==='critico');
@@ -2600,6 +2736,7 @@ function renderStock(){
     </div>
     ${criticos.length?`<div class="abox abox-r" style="margin-bottom:12px"><i class="ti ti-alert-triangle"></i><div><div class="abox-title">Stock crítico — reponer urgente</div><div class="abox-sub">${criticos.map(c=>nombreProducto(c)).join(' · ')}</div></div></div>`:''}
     <button class="abtn abtn-g" onclick="abrirScannerInventario()" style="margin-top:0;margin-bottom:9px"><i class="ti ti-scan"></i> Escanear mercancía (entrada de stock)</button>
+    ${role==='owner'?`<button class="abtn abtn-gray" onclick="abrirImportar()" style="margin-top:0;margin-bottom:9px"><i class="ti ti-file-spreadsheet"></i> Importar inventario desde Excel</button>`:''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px">
       <button class="abtn abtn-gray abtn-sm" onclick="abrirNuevaCamiseta()" style="margin-top:0"><i class="ti ti-plus"></i> Nuevo producto</button>
       <button class="abtn abtn-gray abtn-sm" onclick="abrirCarrito()" style="margin-top:0"><i class="ti ti-shopping-cart"></i> Registrar venta</button>
