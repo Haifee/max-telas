@@ -20,7 +20,7 @@ class CamisetaController extends Controller
     {
         $request->validate([
             'equipo'       => 'required|string|max:100',
-            'temporada'    => 'required|string|max:10',
+            'temporada'    => 'nullable|string|max:60',
             'tipo'         => 'required|in:Local,Visitante,Tercera,Portero,Otro',
             'categoria'    => 'nullable|string|max:50',
             'tallas'       => 'required|array',
