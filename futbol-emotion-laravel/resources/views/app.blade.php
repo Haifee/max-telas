@@ -1174,9 +1174,15 @@ let ncTallasActuales=[];
 function ncRenderTallas(valores){
   const tt=document.getElementById('nc-tipotalla'); if(!tt) return;
   const tipo=tt.value||'letras';
-  const tallas=(TIPOS_TALLA[tipo]||TIPOS_TALLA.letras).tallas;
-  ncTallasActuales=tallas.slice();
+  let tallas=(TIPOS_TALLA[tipo]||TIPOS_TALLA.letras).tallas.slice();
   const prev=valores||{};
+  // Al EDITAR: incluir también las tallas que el producto ya tiene aunque no sean
+  // del tipo detectado (datos mixtos/importados). Así no se pierde ninguna al guardar.
+  if(valores){
+    Object.keys(valores).forEach(t=>{ if(t!=='U' && !tallas.includes(t)) tallas.push(t); });
+    tallas=ordenarTallas(tallas);
+  }
+  ncTallasActuales=tallas.slice();
   const grid=document.getElementById('nc-tallas-grid'); if(!grid) return;
   grid.innerHTML=tallas.map(t=>{
     const v=(prev[t]!=null?prev[t]:0);
@@ -2601,6 +2607,28 @@ function construirStockHTML(lista){
   return html;
 }
 // ── IMPORTADOR DE INVENTARIO (Excel) ─────────────────────────────────────────
+// Lee números tolerando formato venezolano: coma decimal ("6,5"), símbolos ($),
+// y separador de miles. Devuelve null si la celda está vacía o no es número.
+function impNumero(v){
+  if(v==null||v==='') return null;
+  if(typeof v==='number') return isFinite(v)?v:null;
+  let s=String(v).trim().replace(/[^0-9.,-]/g,'');
+  if(!s) return null;
+  if(s.includes('.')&&s.includes(',')){
+    if(s.lastIndexOf(',')>s.lastIndexOf('.')) s=s.replace(/\./g,'').replace(',','.'); // 1.200,50 -> 1200.50
+    else s=s.replace(/,/g,'');                                                        // 1,200.50 -> 1200.50
+  } else if(s.includes(',')){
+    s=s.replace(',','.');                                                             // 6,5 -> 6.5
+  }
+  const n=parseFloat(s);
+  return isFinite(n)?n:null;
+}
+function impEntero(v){
+  if(v==null||v==='') return 0;
+  if(typeof v==='number') return Math.max(0,Math.round(v));
+  const n=parseInt(String(v).replace(/[^0-9-]/g,''),10);
+  return isNaN(n)?0:Math.max(0,n);
+}
 let impProductos=[]; // productos agrupados listos para enviar
 function abrirImportar(){
   impProductos=[];
@@ -2640,13 +2668,13 @@ async function importarArchivo(input){
       const color=String(r[2]||'').trim();
       const marca=String(r[3]||'').trim();
       const talla=String(r[4]==null?'':r[4]).trim().toUpperCase();
-      const cant=parseInt(r[5])||0;
-      const p1=r[6], p2=r[7];
+      const cant=impEntero(r[5]);
+      const p1=impNumero(r[6]), p2=impNumero(r[7]);
       const key=[nombre.toLowerCase(),color.toLowerCase(),marca.toLowerCase(),depto.toLowerCase()].join('|');
       if(!grupos[key]) grupos[key]={equipo:nombre,departamento:depto,color,marca,tallas:{},precio:null,precio2:null};
       const g=grupos[key];
-      if(g.precio==null && p1!=='' && p1!=null && !isNaN(+p1)) g.precio=+p1;
-      if(g.precio2==null && p2!=='' && p2!=null && !isNaN(+p2)) g.precio2=+p2;
+      if(g.precio==null && p1!=null) g.precio=p1;
+      if(g.precio2==null && p2!=null) g.precio2=p2;
       if(talla){ g.tallas[talla]=(g.tallas[talla]||0)+cant; }
       else { g.tallas['U']=(g.tallas['U']||0)+cant; }
     });
