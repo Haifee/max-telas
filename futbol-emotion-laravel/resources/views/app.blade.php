@@ -911,18 +911,7 @@ body.noche .ni.active::after{background:#a9abff}
     <div class="modal-handle"></div>
     <div class="mtitle"><span id="aj-title">Ajustar stock</span><button class="mclose" onclick="closeM('m-ajuste')"><i class="ti ti-x"></i></button></div>
     <p id="aj-name" style="font-size:14px;color:var(--txm);margin-bottom:14px"></p>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
-      <div><label class="fl" style="margin-top:0;text-align:center">S</label><input class="fi" id="aj-S" type="number" min="0" style="text-align:center;padding:10px 6px"></div>
-      <div><label class="fl" style="margin-top:0;text-align:center">M</label><input class="fi" id="aj-M" type="number" min="0" style="text-align:center;padding:10px 6px"></div>
-      <div><label class="fl" style="margin-top:0;text-align:center">L</label><input class="fi" id="aj-L" type="number" min="0" style="text-align:center;padding:10px 6px"></div>
-      <div><label class="fl" style="margin-top:0;text-align:center">XL</label><input class="fi" id="aj-XL" type="number" min="0" style="text-align:center;padding:10px 6px"></div>
-      <div><label class="fl" style="margin-top:0;text-align:center">XXL</label><input class="fi" id="aj-XXL" type="number" min="0" style="text-align:center;padding:10px 6px"></div>
-      <div><label class="fl" style="margin-top:0;text-align:center">10<span style="font-size:9px;display:block;color:var(--txh)">niño</span></label><input class="fi" id="aj-10" type="number" min="0" style="text-align:center;padding:10px 6px"></div>
-      <div><label class="fl" style="margin-top:0;text-align:center">12<span style="font-size:9px;display:block;color:var(--txh)">niño</span></label><input class="fi" id="aj-12" type="number" min="0" style="text-align:center;padding:10px 6px"></div>
-      <div><label class="fl" style="margin-top:0;text-align:center">14<span style="font-size:9px;display:block;color:var(--txh)">niño</span></label><input class="fi" id="aj-14" type="number" min="0" style="text-align:center;padding:10px 6px"></div>
-      <div><label class="fl" style="margin-top:0;text-align:center">16<span style="font-size:9px;display:block;color:var(--txh)">niño</span></label><input class="fi" id="aj-16" type="number" min="0" style="text-align:center;padding:10px 6px"></div>
-      <div><label class="fl" style="margin-top:0;text-align:center">Única<span style="font-size:9px;display:block;color:var(--txh)">otro</span></label><input class="fi" id="aj-U" type="number" min="0" style="text-align:center;padding:10px 6px"></div>
-    </div>
+    <div id="aj-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px"></div>
     <input type="hidden" id="aj-id">
     <button class="abtn abtn-g" onclick="saveAjuste()"><i class="ti ti-check"></i> Actualizar stock</button>
   </div>
@@ -969,18 +958,14 @@ body.noche .ni.active::after{background:#a9abff}
     </div>
 
     <div id="nc-tallas-cam">
+    <label class="fl">Tipo de tallaje</label>
+    <select class="fi" id="nc-tipotalla" onchange="ncRenderTallas()">
+      <option value="letras">Letras (S, M, L, XL, XXL)</option>
+      <option value="nino">Niño (2 a 16)</option>
+      <option value="pantalon">Pantalón (28 a 40)</option>
+    </select>
     <label class="fl">UND por talla (inventario actual)</label>
-    <div style="background:var(--gray);border-radius:12px;padding:12px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:4px">
-      <div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">S</label><input class="fi" id="nc-S" type="number" min="0" value="0" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700"></div>
-      <div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">M</label><input class="fi" id="nc-M" type="number" min="0" value="0" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700"></div>
-      <div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">L</label><input class="fi" id="nc-L" type="number" min="0" value="0" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700"></div>
-      <div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">XL</label><input class="fi" id="nc-XL" type="number" min="0" value="0" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700"></div>
-      <div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">XXL</label><input class="fi" id="nc-XXL" type="number" min="0" value="0" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700"></div>
-      <div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">10 <span style="font-size:9px;color:var(--txh)">niño</span></label><input class="fi" id="nc-10" type="number" min="0" value="0" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700"></div>
-      <div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">12 <span style="font-size:9px;color:var(--txh)">niño</span></label><input class="fi" id="nc-12" type="number" min="0" value="0" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700"></div>
-      <div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">14 <span style="font-size:9px;color:var(--txh)">niño</span></label><input class="fi" id="nc-14" type="number" min="0" value="0" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700"></div>
-      <div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">16 <span style="font-size:9px;color:var(--txh)">niño</span></label><input class="fi" id="nc-16" type="number" min="0" value="0" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700"></div>
-    </div>
+    <div id="nc-tallas-grid" style="background:var(--gray);border-radius:12px;padding:12px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:4px"></div>
     </div>
     <div id="nc-tallas-otro" style="display:none">
       <label class="fl">Unidades en inventario</label>
@@ -1142,11 +1127,56 @@ function nombreProv(n){
   const nom=(CONFIG['proveedor_'+n]||'').trim();
   return (role==='owner'&&nom) ? nom : 'Proveedor '+n;
 }
-const TALLAS=['S','M','L','XL','XXL','10','12','14','16']; // adulto + niño
+const TALLAS=['S','M','L','XL','XXL','10','12','14','16']; // compatibilidad / fallback
 const TALLAS_TODAS=[...TALLAS,'U']; // U = talla Única (productos que no son camisetas)
+// Tipos de tallaje: cada producto con tallas elige UNO. El set es flexible.
+const TIPOS_TALLA={
+  letras:{label:'Letras (S–XXL)', tallas:['S','M','L','XL','XXL']},
+  nino:{label:'Niño (2–16)',     tallas:['2','4','6','8','10','12','14','16']},
+  pantalon:{label:'Pantalón (28–40)', tallas:['28','30','32','34','36','38','40']},
+};
+const _ORD_LET={XS:0,S:1,M:2,L:3,XL:4,XXL:5,XXXL:6};
+function ordenarTallas(arr){
+  return arr.slice().sort((a,b)=>{
+    const na=_ORD_LET[a], nb=_ORD_LET[b];
+    if(na!=null&&nb!=null) return na-nb;
+    if(na!=null) return -1;
+    if(nb!=null) return 1;
+    const xa=parseFloat(a), xb=parseFloat(b);
+    if(!isNaN(xa)&&!isNaN(xb)) return xa-xb;
+    return String(a).localeCompare(String(b));
+  });
+}
+function detectarTipoTalla(tallas){
+  const ks=Object.keys(tallas||{}).filter(t=>t!=='U');
+  if(ks.some(t=>['28','30','32','34','36','38','40'].includes(t))) return 'pantalon';
+  if(ks.some(t=>['2','4','6','8'].includes(t))) return 'nino';
+  if(ks.some(t=>['S','M','L','XL','XXL'].includes(t))) return 'letras';
+  if(ks.some(t=>['10','12','14','16'].includes(t))) return 'nino';
+  return 'letras';
+}
+// Dibuja la grilla de tallas del tipo elegido, conservando valores si se pasan.
+let ncTallasActuales=[];
+function ncRenderTallas(valores){
+  const tt=document.getElementById('nc-tipotalla'); if(!tt) return;
+  const tipo=tt.value||'letras';
+  const tallas=(TIPOS_TALLA[tipo]||TIPOS_TALLA.letras).tallas;
+  ncTallasActuales=tallas.slice();
+  const prev=valores||{};
+  const grid=document.getElementById('nc-tallas-grid'); if(!grid) return;
+  grid.innerHTML=tallas.map(t=>{
+    const v=(prev[t]!=null?prev[t]:0);
+    return `<div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">${t}</label><input class="fi nc-talla-in" data-talla="${t}" type="number" min="0" value="${v}" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700" oninput="actualizarTotalNC()"></div>`;
+  }).join('');
+  actualizarTotalNC();
+}
 let catProducto='camiseta';
 function esCamiseta(c){ return !c.categoria || c.categoria==='camiseta'; }
-function tallasDe(c){ return esCamiseta(c) ? TALLAS : ['U']; }
+function tallasDe(c){
+  if(!esCamiseta(c)) return ['U'];
+  const ks=Object.keys(c.tallas||{}).filter(t=>t!=='U');
+  return ks.length ? ordenarTallas(ks) : [...TALLAS];
+}
 function nombreProducto(c){
   if(esCamiseta(c)) return c.equipo + (c.color ? ' · '+c.color : '');
   const cat=(c.categoria||'').trim();
@@ -1598,6 +1628,7 @@ function escanearParaCarrito(){
       document.getElementById('cart-cam').value=String(cam.id);
       {const _sc=document.getElementById('cart-cam-search'); if(_sc)_sc.value=nombreProducto(cam);}
       carritoAutoPrecio();
+      carritoRenderTallaOpts(cam, r.talla);
       document.getElementById('cart-talla').value=r.talla;
       document.getElementById('cart-cant').value=1;
       const stock=cam.tallas[r.talla]||0;
@@ -2523,8 +2554,7 @@ function cardIndividual(c){
       </div>`;
     }
 function matrizCard(nombre, grupo){
-  const orden=['S','M','L','XL','XXL','10','12','14','16'];
-  let cols=orden.filter(t=>grupo.some(c=>(c.tallas[t]||0)>0));
+  let cols=ordenarTallas([...new Set(grupo.flatMap(c=>Object.keys(c.tallas||{}).filter(t=>t!=='U'&&(c.tallas[t]||0)>0)))]);
   if(!cols.length) cols=['S','M','L','XL','XXL'];
   const totalG=grupo.reduce((a,c)=>a+Object.values(c.tallas).reduce((x,y)=>x+y,0),0);
   const marca=(grupo.find(c=>c.temp&&c.temp!=='\u2014')||{}).temp||'';
@@ -2596,19 +2626,16 @@ function abrirNuevaCamiseta(){
   document.getElementById('nc-precio2').value='';
   document.getElementById('nc-id').value='';
   document.getElementById('nc-btn-borrar').style.display='none';
-  TALLAS_TODAS.forEach(t=>document.getElementById('nc-'+t).value=0);
+  {const _tt=document.getElementById('nc-tipotalla'); if(_tt)_tt.value='letras';}
+  ncRenderTallas();
   document.getElementById('nc-total').textContent='0';
   openM('m-nueva-cam');
-  // Listener para calcular total en tiempo real
-  TALLAS_TODAS.forEach(t=>{
-    document.getElementById('nc-'+t).oninput=actualizarTotalNC;
-  });
 }
 function actualizarTotalNC(){
-  const total=catProducto==='otro'
-    ? (+document.getElementById('nc-U').value||0)
-    : TALLAS.reduce((s,t)=>s+(+document.getElementById('nc-'+t).value||0),0);
-  document.getElementById('nc-total').textContent=total;
+  let total;
+  if(catProducto==='otro'){ total=(+document.getElementById('nc-U').value||0); }
+  else { total=[...document.querySelectorAll('#nc-tallas-grid .nc-talla-in')].reduce((s,el)=>s+(+el.value||0),0); }
+  const el=document.getElementById('nc-total'); if(el) el.textContent=total;
 }
 function editarCamiseta(id){
   const c=camisetas.find(x=>x.id===id);if(!c)return;
@@ -2625,14 +2652,15 @@ function editarCamiseta(id){
   document.getElementById('nc-precio2').value=c.precio2!=null?c.precio2:'';
   document.getElementById('nc-id').value=c.id;
   document.getElementById('nc-btn-borrar').style.display='flex';
-  TALLAS_TODAS.forEach(t=>document.getElementById('nc-'+t).value=c.tallas[t]||0);
+  {const _tt=document.getElementById('nc-tipotalla'); if(_tt)_tt.value=detectarTipoTalla(c.tallas);}
+  ncRenderTallas(c.tallas);
+  {const _u=document.getElementById('nc-U'); if(_u)_u.value=c.tallas['U']||0;}
   // Tipo y proveedor
   const selTipo=document.getElementById('nc-tipo');
   for(let o of selTipo.options) if(o.text===c.tipo){o.selected=true;break}
   const selProv=document.getElementById('nc-prov');
   for(let o of selProv.options) if(+o.value===c.prov){o.selected=true;break}
   actualizarTotalNC();
-  TALLAS_TODAS.forEach(t=>{document.getElementById('nc-'+t).oninput=actualizarTotalNC});
   openM('m-nueva-cam');
 }
 async function saveNuevaCamiseta(seguir=false){
@@ -2647,12 +2675,11 @@ async function saveNuevaCamiseta(seguir=false){
     if(!categoria){toast('Elige el departamento');return}
   }
   const tallas={};
-  TALLAS_TODAS.forEach(t=>tallas[t]=+document.getElementById('nc-'+t).value||0);
+  if(esOtro){ tallas['U']=+document.getElementById('nc-U').value||0; }
+  else { document.querySelectorAll('#nc-tallas-grid .nc-talla-in').forEach(el=>{ tallas[el.dataset.talla]=+el.value||0; }); }
   if(Object.values(tallas).some(v=>v<0)){toast('⚠️ Las cantidades no pueden ser negativas');return}
   if(+document.getElementById('nc-min').value<0){toast('⚠️ El stock mínimo no puede ser negativo');return}
   if(document.getElementById('nc-precio').value!==''&&+document.getElementById('nc-precio').value<0){toast('⚠️ El precio no puede ser negativo');return}
-  if(esOtro) TALLAS.forEach(t=>tallas[t]=0); // producto sin tallas: solo U
-  else tallas['U']=0; // camiseta: sin talla única
   const precioVal=document.getElementById('nc-precio').value;
   const precio2Val=document.getElementById('nc-precio2').value;
   const data={
@@ -2702,8 +2729,7 @@ async function saveNuevaCamiseta(seguir=false){
     if(seguir && !esOtro){
       // Guardar y agregar otro color: mantener abierto, limpiar solo color y tallas
       document.getElementById('nc-color').value='';
-      TALLAS_TODAS.forEach(t=>{const el=document.getElementById('nc-'+t); if(el)el.value=0;});
-      actualizarTotalNC();
+      ncRenderTallas();
       document.getElementById('nc-color').focus();
       toast(`✓ ${equipo}${color?' · '+color:''} guardado · agrega el siguiente color`);
     } else {
@@ -2736,20 +2762,25 @@ async function borrarCamiseta(){
   renderStock();
 }
 function openAjuste(id){
-  const c=camisetas.find(x=>x.id===id);
+  const c=camisetas.find(x=>x.id===id); if(!c) return;
   document.getElementById('aj-title').textContent='Ajustar stock';
   document.getElementById('aj-name').textContent=nombreProducto(c);
-  TALLAS_TODAS.forEach(t=>document.getElementById('aj-'+t).value=c.tallas[t]||0);
+  const tallas=tallasDe(c);
+  document.getElementById('aj-grid').innerHTML=tallas.map(t=>{
+    const v=c.tallas[t]||0;
+    return `<div><label class="fl" style="margin-top:0;text-align:center">${t==='U'?'Única':t}</label><input class="fi aj-in" data-talla="${t}" type="number" min="0" value="${v}" style="text-align:center;padding:10px 6px"></div>`;
+  }).join('');
   document.getElementById('aj-id').value=c.id;
   openM('m-ajuste');
 }
 async function saveAjuste(){
   const id=+document.getElementById('aj-id').value;
   const i=camisetas.findIndex(c=>c.id===id);
-  const ajVals=TALLAS_TODAS.map(t=>+document.getElementById('aj-'+t).value||0);
-  if(ajVals.some(v=>v<0)){toast('⚠️ Las cantidades no pueden ser negativas');return}
-  if(i>=0){TALLAS_TODAS.forEach(t=>{camisetas[i].tallas[t]=+document.getElementById('aj-'+t).value||0})}
-  if(!MODO_SERVIDOR) sd('camisetas',camisetas); await syncCamisetas('stock',camisetas[i].tallas,id); const camUpd=camisetas.find(c=>c.id===id); if(camUpd) registrarActividad('stock',`Stock ajustado: ${camUpd.equipo} ${camUpd.tipo}`,`${camUpd.temp}`);
+  const nuevo={};
+  document.querySelectorAll('#aj-grid .aj-in').forEach(el=>{ nuevo[el.dataset.talla]=+el.value||0; });
+  if(Object.values(nuevo).some(v=>v<0)){toast('⚠️ Las cantidades no pueden ser negativas');return}
+  if(i>=0){ camisetas[i].tallas=nuevo; }
+  if(!MODO_SERVIDOR) sd('camisetas',camisetas); await syncCamisetas('stock',nuevo,id); const camUpd=camisetas.find(c=>c.id===id); if(camUpd) registrarActividad('stock',`Stock ajustado: ${camUpd.equipo} ${camUpd.tipo}`,`${camUpd.temp}`);
   closeM('m-ajuste');toast('Stock actualizado ✓');renderStock();
 }
 function pedirEste(id){
@@ -2884,11 +2915,19 @@ function carritoBuscarCam(){
   }).join('');
   list.style.display='block';
 }
+function carritoRenderTallaOpts(c,mantener){
+  const sel=document.getElementById('cart-talla'); if(!sel) return;
+  const tallas=c?tallasDe(c):['S','M','L','XL','XXL'];
+  const cur=mantener||sel.value;
+  sel.innerHTML=tallas.map(t=>`<option>${t}</option>`).join('');
+  if(tallas.includes(cur)) sel.value=cur; else if(tallas.length) sel.value=tallas[0];
+}
 function carritoSelCam(id){
   const sel=document.getElementById('cart-cam'); if(sel) sel.value=String(id);
   const c=camisetas.find(x=>x.id===id);
   const inp=document.getElementById('cart-cam-search'); if(inp&&c) inp.value=nombreProducto(c);
   const list=document.getElementById('cart-cam-list'); if(list){ list.style.display='none'; list.innerHTML=''; }
+  carritoRenderTallaOpts(c);
   carritoAutoPrecio();
   carritoStockInfo();
 }
