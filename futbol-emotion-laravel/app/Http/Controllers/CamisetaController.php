@@ -7,6 +7,20 @@ use Illuminate\Support\Facades\DB;
 
 class CamisetaController extends Controller
 {
+    // ── Tallas flexibles: el inventario vive en camisetas.tallas_json ────────────
+    // (clave = talla en MAYÚSCULAS, valor = unidades). Se siguen escribiendo las
+    // columnas talla_* antiguas para no romper nada que aún las lea.
+    private function tallasObj($c){
+        if ($c && !empty($c->tallas_json)) {
+            $o = json_decode($c->tallas_json, true);
+            if (is_array($o)) return array_map(fn($v) => (int)$v, $o);
+        }
+        $legacy = ['S'=>'talla_s','M'=>'talla_m','L'=>'talla_l','XL'=>'talla_xl','XXL'=>'talla_xxl','10'=>'talla_10','12'=>'talla_12','14'=>'talla_14','16'=>'talla_16','U'=>'talla_u'];
+        $o = [];
+        foreach ($legacy as $k => $col) { $v = (int)($c->$col ?? 0); if ($v !== 0) $o[$k] = $v; }
+        return $o;
+    }
+
     public function index()
     {
         $camisetas = DB::table('camisetas')->orderBy('equipo')->get();
@@ -50,6 +64,7 @@ class CamisetaController extends Controller
             'talla_14'      => $tallas['14']  ?? 0,
             'talla_16'      => $tallas['16']  ?? 0,
             'talla_u'       => $tallas['U']   ?? 0,
+            'tallas_json'   => json_encode($tallas, JSON_UNESCAPED_UNICODE),
             'stock_minimo'  => $request->stock_minimo,
             'proveedor_id'  => $request->proveedor_id,
             'precio'        => $request->input('precio'),
@@ -68,24 +83,28 @@ class CamisetaController extends Controller
         $camiseta = DB::table('camisetas')->find($id);
         if (!$camiseta) return response()->json(['error' => 'No encontrada'], 404);
 
-        $tallas = $request->input('tallas', []);
-        $tallas = array_map(fn($v) => max(0, (int)$v), $tallas); // nunca negativos
+        $incoming = $request->input('tallas', []);
+        $incoming = array_map(fn($v) => max(0, (int)$v), $incoming); // nunca negativos
+        // Fusiona lo entrante sobre lo existente: las tallas que el formulario no
+        // envía conservan su valor; las nuevas tallas (28, 30…) simplemente se suman.
+        $tallas = array_merge($this->tallasObj($camiseta), $incoming);
 
         DB::table('camisetas')->where('id', $id)->update([
             'categoria'    => $request->input('categoria', $camiseta->categoria ?? 'camiseta'),
             'equipo'       => $request->input('equipo', $camiseta->equipo),
             'temporada'    => $request->input('temporada', $camiseta->temporada),
             'tipo'         => $request->input('tipo', $camiseta->tipo),
-            'talla_s'      => $tallas['S']   ?? $camiseta->talla_s,
-            'talla_m'      => $tallas['M']   ?? $camiseta->talla_m,
-            'talla_l'      => $tallas['L']   ?? $camiseta->talla_l,
-            'talla_xl'     => $tallas['XL']  ?? $camiseta->talla_xl,
-            'talla_xxl'    => $tallas['XXL'] ?? $camiseta->talla_xxl,
-            'talla_10'     => $tallas['10']  ?? $camiseta->talla_10,
-            'talla_12'     => $tallas['12']  ?? $camiseta->talla_12,
-            'talla_14'     => $tallas['14']  ?? $camiseta->talla_14,
-            'talla_16'     => $tallas['16']  ?? $camiseta->talla_16,
-            'talla_u'      => $tallas['U']   ?? $camiseta->talla_u,
+            'talla_s'      => $tallas['S']   ?? 0,
+            'talla_m'      => $tallas['M']   ?? 0,
+            'talla_l'      => $tallas['L']   ?? 0,
+            'talla_xl'     => $tallas['XL']  ?? 0,
+            'talla_xxl'    => $tallas['XXL'] ?? 0,
+            'talla_10'     => $tallas['10']  ?? 0,
+            'talla_12'     => $tallas['12']  ?? 0,
+            'talla_14'     => $tallas['14']  ?? 0,
+            'talla_16'     => $tallas['16']  ?? 0,
+            'talla_u'      => $tallas['U']   ?? 0,
+            'tallas_json'  => json_encode($tallas, JSON_UNESCAPED_UNICODE),
             'stock_minimo' => $request->input('stock_minimo', $camiseta->stock_minimo),
             'proveedor_id' => $request->input('proveedor_id', $camiseta->proveedor_id),
             'precio'       => $request->input('precio', $camiseta->precio),
@@ -110,20 +129,22 @@ class CamisetaController extends Controller
         $camiseta = DB::table('camisetas')->find($id);
         if (!$camiseta) return response()->json(['error' => 'No encontrada'], 404);
 
-        $tallas = $request->input('tallas', []);
-        $tallas = array_map(fn($v) => max(0, (int)$v), $tallas); // nunca negativos
+        $incoming = $request->input('tallas', []);
+        $incoming = array_map(fn($v) => max(0, (int)$v), $incoming); // nunca negativos
+        $tallas = array_merge($this->tallasObj($camiseta), $incoming);
 
         DB::table('camisetas')->where('id', $id)->update([
-            'talla_s'    => $tallas['S']   ?? $camiseta->talla_s,
-            'talla_m'    => $tallas['M']   ?? $camiseta->talla_m,
-            'talla_l'    => $tallas['L']   ?? $camiseta->talla_l,
-            'talla_xl'   => $tallas['XL']  ?? $camiseta->talla_xl,
-            'talla_xxl'  => $tallas['XXL'] ?? $camiseta->talla_xxl,
-            'talla_10'   => $tallas['10']  ?? $camiseta->talla_10,
-            'talla_12'   => $tallas['12']  ?? $camiseta->talla_12,
-            'talla_14'   => $tallas['14']  ?? $camiseta->talla_14,
-            'talla_16'   => $tallas['16']  ?? $camiseta->talla_16,
-            'talla_u'    => $tallas['U']   ?? $camiseta->talla_u,
+            'talla_s'    => $tallas['S']   ?? 0,
+            'talla_m'    => $tallas['M']   ?? 0,
+            'talla_l'    => $tallas['L']   ?? 0,
+            'talla_xl'   => $tallas['XL']  ?? 0,
+            'talla_xxl'  => $tallas['XXL'] ?? 0,
+            'talla_10'   => $tallas['10']  ?? 0,
+            'talla_12'   => $tallas['12']  ?? 0,
+            'talla_14'   => $tallas['14']  ?? 0,
+            'talla_16'   => $tallas['16']  ?? 0,
+            'talla_u'    => $tallas['U']   ?? 0,
+            'tallas_json'=> json_encode($tallas, JSON_UNESCAPED_UNICODE),
             'updated_at' => now(),
         ]);
 
@@ -165,7 +186,7 @@ class CamisetaController extends Controller
         $request->validate([
             'codigo'      => 'required|string|max:64',
             'camiseta_id' => 'required|integer|exists:camisetas,id',
-            'talla'       => 'required|in:S,M,L,XL,XXL,10,12,14,16,U',
+            'talla'       => 'required|string|max:10',
         ]);
 
         $existente = DB::table('codigos_barras')->where('codigo', $request->codigo)->first();
@@ -193,18 +214,10 @@ class CamisetaController extends Controller
             'temp'    => $c->temporada,
             'tipo'    => $c->tipo,
             'categoria' => $c->categoria ?? 'camiseta',
-            'tallas'  => [
-                'S'   => (int)$c->talla_s,
-                'M'   => (int)$c->talla_m,
-                'L'   => (int)$c->talla_l,
-                'XL'  => (int)$c->talla_xl,
-                'XXL' => (int)$c->talla_xxl,
-                '10'  => (int)$c->talla_10,
-                '12'  => (int)$c->talla_12,
-                '14'  => (int)$c->talla_14,
-                '16'  => (int)$c->talla_16,
-                'U'   => (int)($c->talla_u ?? 0),
-            ],
+            'tallas'  => array_merge(
+                ['S'=>0,'M'=>0,'L'=>0,'XL'=>0,'XXL'=>0,'10'=>0,'12'=>0,'14'=>0,'16'=>0,'U'=>0],
+                $this->tallasObj($c)
+            ),
             'min'    => (int)$c->stock_minimo,
             'prov'   => (int)$c->proveedor_id,
             'precio' => isset($c->precio) && $c->precio !== null ? (float)$c->precio : null,

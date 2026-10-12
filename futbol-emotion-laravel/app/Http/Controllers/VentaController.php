@@ -8,6 +8,32 @@ use App\Services\PushService;
 
 class VentaController extends Controller
 {
+    // ── Tallas flexibles: el stock vive en camisetas.tallas_json ─────────────────
+    // (clave = talla en MAYÚSCULAS, valor = unidades). Para descontar se bloquea la
+    // fila (lockForUpdate) dentro de la transacción, lo que serializa ventas
+    // simultáneas del mismo producto y es a prueba de carreras para CUALQUIER talla.
+    // Se mantienen sincronizadas las columnas talla_* antiguas por compatibilidad.
+    private function tallaKey($t){ return strtoupper(trim((string)$t)); }
+
+    private function tallasObj($c){
+        if ($c && !empty($c->tallas_json)) {
+            $o = json_decode($c->tallas_json, true);
+            if (is_array($o)) return array_map(fn($v) => (int)$v, $o);
+        }
+        $legacy = ['S'=>'talla_s','M'=>'talla_m','L'=>'talla_l','XL'=>'talla_xl','XXL'=>'talla_xxl','10'=>'talla_10','12'=>'talla_12','14'=>'talla_14','16'=>'talla_16','U'=>'talla_u'];
+        $o = [];
+        foreach ($legacy as $k => $col) { $v = (int)($c->$col ?? 0); if ($v !== 0) $o[$k] = $v; }
+        return $o;
+    }
+
+    private function guardarTallas($camId, array $tallas){
+        $legacy = ['S'=>'talla_s','M'=>'talla_m','L'=>'talla_l','XL'=>'talla_xl','XXL'=>'talla_xxl','10'=>'talla_10','12'=>'talla_12','14'=>'talla_14','16'=>'talla_16','U'=>'talla_u'];
+        $tallas = array_map(fn($v) => max(0, (int)$v), $tallas);
+        $upd = ['tallas_json' => json_encode($tallas, JSON_UNESCAPED_UNICODE), 'updated_at' => now()];
+        foreach ($legacy as $k => $col) { $upd[$col] = $tallas[$k] ?? 0; }
+        DB::table('camisetas')->where('id', $camId)->update($upd);
+    }
+
     public function index(Request $request)
     {
         // Rendimiento: por defecto la app pide solo lo reciente (?desde=YYYY-MM-DD).
@@ -51,7 +77,7 @@ class VentaController extends Controller
 
         $camiseta = null;
         $equipoNombre = $request->input('equipo');
-        $col = null;
+        $tallaNorm = $this->tallaKey($request->talla);
 
         // Si viene camiseta_id, es una venta desde el inventario: validar stock
         if ($request->camiseta_id) {
@@ -60,16 +86,9 @@ class VentaController extends Controller
                 return response()->json(['error' => 'Camiseta no encontrada'], 404);
             }
 
-            // Talla válida: evita construir una columna inexistente (y cierra un hueco de validación)
-            $tallasValidas = ['S', 'M', 'L', 'XL', 'XXL', '10', '12', '14', '16', 'U'];
-            $tallaNorm = strtoupper($request->talla);
-            if (!in_array($tallaNorm, $tallasValidas)) {
-                return response()->json(['error' => 'Talla inválida'], 422);
-            }
-            $col = 'talla_' . strtolower($tallaNorm);
-            $stockActual = $camiseta->$col ?? 0;
-
-            // Pre-chequeo amable para el caso común; el descuento atómico de abajo es la garantía real
+            // Pre-chequeo amable; la garantía real es el bloqueo de fila dentro de la transacción
+            $tallasAct = $this->tallasObj($camiseta);
+            $stockActual = (int)($tallasAct[$tallaNorm] ?? 0);
             if ($stockActual < $request->cantidad) {
                 return response()->json([
                     'error' => "Solo hay {$stockActual} UND en talla {$tallaNorm}"
@@ -82,19 +101,22 @@ class VentaController extends Controller
 
         DB::beginTransaction();
         try {
+            $stockNuevo = null;
             if ($camiseta) {
-                // Descuento atómico y condicional: solo resta si AÚN queda suficiente.
-                // Si dos ventas compiten por la última unidad, la BD sólo deja pasar una.
-                $afectadas = DB::table('camisetas')
-                    ->where('id', $request->camiseta_id)
-                    ->where($col, '>=', $request->cantidad)
-                    ->decrement($col, $request->cantidad);
-                if ($afectadas === 0) {
+                // Bloqueo de fila: serializa ventas simultáneas del mismo producto.
+                // La 2.ª venta espera a que la 1.ª confirme y relee el stock ya actualizado.
+                $fresca = DB::table('camisetas')->where('id', $request->camiseta_id)->lockForUpdate()->first();
+                $tallas = $this->tallasObj($fresca);
+                $disp = (int)($tallas[$tallaNorm] ?? 0);
+                if ($disp < $request->cantidad) {
                     DB::rollBack();
                     return response()->json([
                         'error' => "Stock insuficiente en talla {$tallaNorm} — otra venta se adelantó"
                     ], 409);
                 }
+                $tallas[$tallaNorm] = $disp - $request->cantidad;
+                $this->guardarTallas($request->camiseta_id, $tallas);
+                $stockNuevo = $tallas[$tallaNorm];
             }
 
             // Número de venta para TODAS las ventas (física y online, misma secuencia)
@@ -149,9 +171,6 @@ class VentaController extends Controller
             DB::commit();
 
             $venta = DB::table('ventas')->find($id);
-            $stockNuevo = $camiseta
-                ? DB::table('camisetas')->find($request->camiseta_id)->$col
-                : null;
 
             // ── Notificaciones push ──
             $actor = $request->input('_rol') === 'owner' ? 'owner' : 'manager';
@@ -194,7 +213,6 @@ class VentaController extends Controller
         $lineas = $request->input('lineas');
         $canal  = $request->input('canal');
         $pagos  = $request->input('pagos', []);
-        $tallasValidas = ['S', 'M', 'L', 'XL', 'XXL', '10', '12', '14', '16', 'U'];
 
         DB::beginTransaction();
         try {
@@ -232,23 +250,19 @@ class VentaController extends Controller
                         DB::rollBack();
                         return response()->json(['error' => "Un producto del carrito ya no existe"], 404);
                     }
-                    $tallaNorm = strtoupper($talla);
-                    if (!in_array($tallaNorm, $tallasValidas)) {
-                        DB::rollBack();
-                        return response()->json(['error' => 'Talla inválida'], 422);
-                    }
-                    $col = 'talla_' . strtolower($tallaNorm);
-                    // Descuento atómico y condicional (a prueba de carreras)
-                    $afectadas = DB::table('camisetas')
-                        ->where('id', $camId)
-                        ->where($col, '>=', $cant)
-                        ->decrement($col, $cant);
-                    if ($afectadas === 0) {
+                    $tallaNorm = $this->tallaKey($talla);
+                    // Bloqueo de fila: serializa ventas simultáneas del mismo producto
+                    $fresca = DB::table('camisetas')->where('id', $camId)->lockForUpdate()->first();
+                    $tallas = $this->tallasObj($fresca);
+                    $disp = (int)($tallas[$tallaNorm] ?? 0);
+                    if ($disp < $cant) {
                         DB::rollBack();
                         return response()->json([
                             'error' => "Stock insuficiente en {$camiseta->equipo} talla {$tallaNorm}"
                         ], 409);
                     }
+                    $tallas[$tallaNorm] = $disp - $cant;
+                    $this->guardarTallas($camId, $tallas);
                     $equipoNombre = $camiseta->equipo . ' ' . $camiseta->tipo . ' ' . $camiseta->temporada;
                 }
 
@@ -345,33 +359,29 @@ class VentaController extends Controller
             if ($venta->camiseta_id) {
                 $camiseta = DB::table('camisetas')->find($venta->camiseta_id);
                 if ($camiseta) {
-                    $tallasValidas = ['S', 'M', 'L', 'XL', 'XXL', '10', '12', '14', '16', 'U'];
-                    if (!in_array(strtoupper($nuevaTalla), $tallasValidas)) {
-                        DB::rollBack();
-                        return response()->json(['error' => 'Talla inválida'], 422);
-                    }
-                    $nuevaTalla = strtoupper($nuevaTalla);
-                    $colVieja = 'talla_' . strtolower($venta->talla);
-                    $colNueva = 'talla_' . strtolower($nuevaTalla);
+                    $tallaVieja = $this->tallaKey($venta->talla);
+                    $nuevaTalla = $this->tallaKey($nuevaTalla);
+
+                    // Bloqueo de fila mientras corregimos el inventario
+                    $fresca = DB::table('camisetas')->where('id', $venta->camiseta_id)->lockForUpdate()->first();
+                    $tallas = $this->tallasObj($fresca);
 
                     // 1) Devolver lo que la venta original había descontado
-                    DB::table('camisetas')->where('id', $venta->camiseta_id)
-                        ->increment($colVieja, $venta->cantidad);
+                    $tallas[$tallaVieja] = (int)($tallas[$tallaVieja] ?? 0) + (int)$venta->cantidad;
 
                     // 2) Verificar que alcanza para la nueva talla/cantidad
-                    $fresca = DB::table('camisetas')->find($venta->camiseta_id);
-                    if (($fresca->$colNueva ?? 0) < $nuevaCantidad) {
+                    $dispNueva = (int)($tallas[$nuevaTalla] ?? 0);
+                    if ($dispNueva < $nuevaCantidad) {
                         DB::rollBack();
                         return response()->json([
-                            'error' => "Solo hay {$fresca->$colNueva} UND en talla {$nuevaTalla}"
+                            'error' => "Solo hay {$dispNueva} UND en talla {$nuevaTalla}"
                         ], 422);
                     }
 
                     // 3) Descontar según la venta corregida
-                    DB::table('camisetas')->where('id', $venta->camiseta_id)
-                        ->decrement($colNueva, $nuevaCantidad);
-
-                    $stockNuevo = DB::table('camisetas')->find($venta->camiseta_id)->$colNueva;
+                    $tallas[$nuevaTalla] = $dispNueva - $nuevaCantidad;
+                    $this->guardarTallas($venta->camiseta_id, $tallas);
+                    $stockNuevo = $tallas[$nuevaTalla];
 
                     // El nombre para display sigue derivado de la camiseta del stock
                     $nuevoEquipo = $camiseta->equipo . ' ' . $camiseta->tipo . ' ' . $camiseta->temporada;
@@ -485,10 +495,12 @@ class VentaController extends Controller
         try {
             // Devolver las unidades al inventario si la venta descontó stock
             if ($venta->camiseta_id) {
-                $col = 'talla_' . strtolower($venta->talla);
-                if (in_array($col, ['talla_s', 'talla_m', 'talla_l', 'talla_xl', 'talla_xxl', 'talla_10', 'talla_12', 'talla_14', 'talla_16', 'talla_u'])) {
-                    DB::table('camisetas')->where('id', $venta->camiseta_id)
-                        ->increment($col, $venta->cantidad);
+                $cam = DB::table('camisetas')->where('id', $venta->camiseta_id)->lockForUpdate()->first();
+                if ($cam) {
+                    $k = $this->tallaKey($venta->talla);
+                    $tallas = $this->tallasObj($cam);
+                    $tallas[$k] = (int)($tallas[$k] ?? 0) + (int)$venta->cantidad;
+                    $this->guardarTallas($venta->camiseta_id, $tallas);
                 }
             }
 
