@@ -85,9 +85,10 @@ class CamisetaController extends Controller
 
         $incoming = $request->input('tallas', []);
         $incoming = array_map(fn($v) => max(0, (int)$v), $incoming); // nunca negativos
-        // Fusiona lo entrante sobre lo existente: las tallas que el formulario no
-        // envía conservan su valor; las nuevas tallas (28, 30…) simplemente se suman.
-        $tallas = array_merge($this->tallasObj($camiseta), $incoming);
+        // El formulario envía el SET COMPLETO de tallas del tipo elegido: lo entrante
+        // reemplaza al set anterior (así cambiar de tallaje no deja tallas huérfanas).
+        // Si no viene ninguna talla, se conservan las actuales.
+        $tallas = !empty($incoming) ? $incoming : $this->tallasObj($camiseta);
 
         DB::table('camisetas')->where('id', $id)->update([
             'categoria'    => $request->input('categoria', $camiseta->categoria ?? 'camiseta'),
@@ -214,10 +215,7 @@ class CamisetaController extends Controller
             'temp'    => $c->temporada,
             'tipo'    => $c->tipo,
             'categoria' => $c->categoria ?? 'camiseta',
-            'tallas'  => array_merge(
-                ['S'=>0,'M'=>0,'L'=>0,'XL'=>0,'XXL'=>0,'10'=>0,'12'=>0,'14'=>0,'16'=>0,'U'=>0],
-                $this->tallasObj($c)
-            ),
+            'tallas'  => $this->tallasObj($c),
             'min'    => (int)$c->stock_minimo,
             'prov'   => (int)$c->proveedor_id,
             'precio' => isset($c->precio) && $c->precio !== null ? (float)$c->precio : null,
