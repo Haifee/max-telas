@@ -350,13 +350,15 @@ body.noche .ni.active::after{background:#a9abff}
 <style>
 #recibo-print{display:none}
 #recibo-print .rc-c{text-align:center}#recibo-print .rc-b{font-weight:800}
-#recibo-print .rc-hr{border:none;border-top:1px dashed #000;margin:6px 0}
-#recibo-print .rc-row{display:flex;justify-content:space-between;gap:8px}
-#recibo-print .rc-big{font-size:17px;font-weight:800}#recibo-print .rc-sm{font-size:10.5px}
+#recibo-print .rc-hr{border:none;border-top:1px dashed #000;margin:5px 0}
+#recibo-print .rc-row{display:flex;justify-content:space-between;gap:6px}
+#recibo-print .rc-row>span:first-child{flex:1;min-width:0;word-break:break-word}
+#recibo-print .rc-row>span:last-child{flex:none;white-space:nowrap;text-align:right}
+#recibo-print .rc-big{font-size:14px;font-weight:800}#recibo-print .rc-sm{font-size:10px}
 @media print{
   html,body{background:#fff!important}
   body>*{display:none!important}
-  #recibo-print{display:block!important;position:absolute;left:0;top:0;width:80mm;padding:4mm 3mm;font-family:'Courier New',monospace;color:#000;font-size:12px;line-height:1.35}
+  #recibo-print{display:block!important;position:absolute;left:0;top:0;width:80mm;padding:2mm 2.5mm;font-family:'Courier New',monospace;color:#000;font-size:11px;line-height:1.3}
   @page{size:80mm auto;margin:0}
 }
 </style>
@@ -648,7 +650,7 @@ body.noche .ni.active::after{background:#a9abff}
     </div>
     <div class="stitle">Agregar producto</div>
     <button class="abtn abtn-g abtn-sm" onclick="escanearParaCarrito()" style="margin-top:0;margin-bottom:8px"><i class="ti ti-scan"></i> Escanear código</button>
-    <div style="position:relative"><i class="ti ti-search" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--txh);font-size:17px;pointer-events:none"></i><input class="fi" id="cart-cam-search" placeholder="Buscar producto…" autocomplete="off" oninput="carritoBuscarCam()" onfocus="carritoBuscarCam()" onblur="setTimeout(()=>{const l=document.getElementById('cart-cam-list');if(l)l.style.display='none'},180)" style="padding-left:40px"></div>
+    <div style="position:relative"><i class="ti ti-search" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--txh);font-size:17px;pointer-events:none"></i><input class="fi" id="cart-cam-search" placeholder="Buscar producto o código…" autocomplete="off" oninput="carritoBuscarCam()" onfocus="carritoBuscarCam()" onkeydown="if(event.key==='Enter'){event.preventDefault();ventaCodigoManual(this.value)}" onblur="setTimeout(()=>{const l=document.getElementById('cart-cam-list');if(l)l.style.display='none'},180)" style="padding-left:40px"></div>
     <div id="cart-cam-list" style="display:none;margin-top:4px;border:1.5px solid var(--grayb);border-radius:12px;overflow:hidden;max-height:230px;overflow-y:auto"></div>
     <select class="fi" id="cart-cam" onchange="carritoAutoPrecio()" style="display:none"></select>
     <select class="fi" id="cart-talla" style="margin-top:8px" onchange="carritoStockInfo()"><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>10</option><option>12</option><option>14</option><option>16</option><option>U</option></select>
@@ -879,7 +881,12 @@ body.noche .ni.active::after{background:#a9abff}
     </div>
     <label class="fl">Descripción</label><input class="fi" id="tx-desc" placeholder="Ej: Bolsas para la tienda, pago de luz…">
     <div class="frow">
-      <div><label class="fl">Importe ($)</label><input class="fi" id="tx-imp" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      <div><label class="fl" id="tx-imp-lbl">Importe ($)</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input class="fi" id="tx-imp" type="number" min="0" step="0.01" placeholder="0.00" oninput="txConv()" style="flex:1">
+          <select class="fi" id="tx-moneda" style="width:66px" onchange="txConv()"><option value="usd">$</option><option value="bs">Bs</option></select>
+        </div>
+        <div id="tx-conv" style="font-size:11px;color:var(--gd);font-weight:700;margin-top:3px;min-height:14px"></div></div>
       <div id="tx-cat-wrap"><label class="fl">Categoría</label><select class="fi" id="tx-cat"><option>Servicios</option><option>Transporte</option><option>Local</option><option>Retiros</option><option>Otros</option></select></div>
       <div id="tx-canal-wrap" style="display:none"><label class="fl">Canal</label><select class="fi" id="tx-canal"><option>Tienda física</option><option>Instagram</option><option>WhatsApp</option><option>Web</option><option>Otro</option></select></div>
     </div>
@@ -986,10 +993,13 @@ body.noche .ni.active::after{background:#a9abff}
       </div>
     </div>
 
+    <label class="fl">Precio de costo ($) <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
+    <input class="fi" id="nc-costo" type="number" min="0" step="0.01" placeholder="Lo que te cuesta a ti" oninput="ncMargen()">
     <label class="fl">Precio 1 — normal ($)</label>
-    <input class="fi" id="nc-precio" type="number" min="0" step="0.01" placeholder="Precio de venta normal">
+    <input class="fi" id="nc-precio" type="number" min="0" step="0.01" placeholder="Precio de venta normal" oninput="ncMargen()">
     <label class="fl">Precio 2 — con descuento ($) <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
-    <input class="fi" id="nc-precio2" type="number" min="0" step="0.01" placeholder="Precio de oferta / efectivo">
+    <input class="fi" id="nc-precio2" type="number" min="0" step="0.01" placeholder="Precio de oferta / efectivo" oninput="ncMargen()">
+    <div id="nc-margen" style="font-size:12px;color:var(--gd);font-weight:700;margin-top:5px;min-height:15px"></div>
 
     <input type="hidden" id="nc-id">
     <button class="abtn abtn-g" onclick="saveNuevaCamiseta()"><i class="ti ti-check"></i> Guardar en inventario</button>
@@ -1198,7 +1208,10 @@ function tallasDe(c){
   return ks.length ? ordenarTallas(ks) : [...TALLAS];
 }
 function nombreProducto(c){
-  if(esCamiseta(c)) return c.equipo + (c.color ? ' · '+c.color : '');
+  if(esCamiseta(c)){
+    const marca=(c.temp&&c.temp!=='\u2014')?c.temp:'';
+    return c.equipo + (c.color?' · '+c.color:'') + (marca?' · '+marca:'');
+  }
   const cat=(c.categoria||'').trim();
   return (!cat || cat.toLowerCase()===String(c.equipo).trim().toLowerCase()) ? c.equipo : `${c.equipo} (${cat})`;
 }
@@ -1671,8 +1684,12 @@ const METODOS_PAGO={
   binance:       {label:'Binance',      icono:'ti-currency-bitcoin',bs:false},
   zinli:         {label:'Zinli',        icono:'ti-wallet',          bs:false},
   cashea:        {label:'Cashea',       icono:'ti-shopping-bag',    bs:false},
+  biopago:       {label:'Biopago',      icono:'ti-fingerprint',     bs:true},
   efectivo_otra: {label:'Otra moneda',   icono:'ti-cash',            bs:false, otra:true},
 };
+// Cuentas/terminales donde entra el dinero (para saber a cuál se pasó el pago).
+const PUNTOS_VENTA=['Banesco','Mercantil'];
+const CUENTA_BIOPAGO='Venezuela Jur\u00eddica';
 
 let metodoPago=null;
 
@@ -1804,14 +1821,28 @@ function setMetodoPago(k){
 
 function ventasHoyPorMoneda(){
   const h=hoy();
-  let bs=0, divisas=0, sinReg=0;
+  let bs=0, divisas=0, pesos=0, sinReg=0;
   ventas.filter(v=>v.fecha===h).forEach(v=>{
-    const p=(v.pagos&&v.pagos[0])||null;
-    if(!p){ sinReg+=v.imp; return; }
-    if(p.moneda==='VES') bs+=parseFloat(p.monto)||0;
-    else divisas+=v.imp;
+    const pagos=(v.pagos&&v.pagos.length)?v.pagos:null;
+    if(!pagos){ sinReg+=(+v.imp||0); return; }
+    pagos.forEach(p=>{
+      const mon=String(p.moneda||'').toLowerCase();
+      if(mon==='ves') bs+=parseFloat(p.monto)||0;
+      else if(mon.includes('peso')) pesos+=parseFloat(p.monto)||0;
+      else divisas+=pagoEnUsd(p);
+    });
   });
-  return {bs,divisas,sinReg};
+  return {bs,divisas,pesos,sinReg};
+}
+// Tarjetas de ventas del día separadas por moneda (Dólares / Bolívares / Pesos)
+function cardsMonedaHoy(){
+  const m=ventasHoyPorMoneda();
+  const card=(cls,ic,lab,val,sub)=>`<div class="mc ${cls}" style="padding:12px 13px;min-height:72px"><i class="ti ${ic} mc-ico" style="font-size:24px"></i><div class="mcl">${lab}</div><div class="mcv" style="font-size:15px">${val}</div><div class="mcs" style="font-size:9.5px">${sub}</div></div>`;
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+    ${card('mc-g','ti-cash','Dólares',fmt(m.divisas),'$, Zelle…')}
+    ${card('mc-cyan','ti-businessplan','Bolívares',fmtBs(m.bs),'PM, PDV, Bs')}
+    ${card('mc-a','ti-cash-banknote','Pesos',(m.pesos||0).toLocaleString('es-CO')+' Ps','efectivo Ps')}
+  </div>`;
 }
 function importeVentaActual(){
   // El importe puede estar en el campo de stock (v-imp) o en el de venta libre (v-imp-libre)
@@ -2391,10 +2422,7 @@ function renderHome(){
         <div class="mc mc-b"><i class="ti ti-truck mc-ico"></i><div class="mcl">Envíos activos</div><div class="mcv">${envActivos}</div></div>
       </div>
       <div class="stitle">Ventas de hoy</div>
-      <div class="mgrid">
-        <div class="mc mc-g"><i class="ti ti-cash mc-ico"></i><div class="mcl">En divisas ($)</div><div class="mcv">${fmt(ventasHoyPorMoneda().divisas)}</div><div class="mcs">efectivo $, Zelle, Binance…</div></div>
-        <div class="mc mc-cyan"><i class="ti ti-businessplan mc-ico"></i><div class="mcl">En bolívares</div><div class="mcv" style="font-size:19px">${fmtBs(ventasHoyPorMoneda().bs)}</div><div class="mcs">pago móvil, PDV, efectivo Bs</div></div>
-      </div>
+      ${cardsMonedaHoy()}
       <div class="stitle">Alertas</div>
       ${alertas}
       <div class="stitle">Reposición sugerida</div>
@@ -2596,15 +2624,54 @@ function matrizCard(nombre, grupo){
     <div style="font-size:11px;color:var(--txh);margin-top:8px"><i class="ti ti-hand-finger"></i> Toca un color para editarlo o ajustar su stock</div>
   </div>`;
 }
+function marcaDe(c){ return (c.temp&&c.temp!=='\u2014')?String(c.temp).trim():'Sin marca'; }
 function construirStockHTML(lista){
-  const porGrupo={};
-  lista.forEach(c=>{ if(esCamiseta(c)&&c.color){ (porGrupo[c.equipo]=porGrupo[c.equipo]||[]).push(c); } });
-  const emitido=new Set(); let html='';
-  lista.forEach(c=>{
-    if(esCamiseta(c)&&c.color){ if(!emitido.has(c.equipo)){ emitido.add(c.equipo); html+=matrizCard(c.equipo, porGrupo[c.equipo]); } }
-    else { html+=cardIndividual(c); }
+  // 1) agrupar por MARCA
+  const porMarca={};
+  lista.forEach(c=>{ const mk=marcaDe(c); (porMarca[mk]=porMarca[mk]||[]).push(c); });
+  const marcas=Object.keys(porMarca).sort((a,b)=>{ if(a==='Sin marca')return 1; if(b==='Sin marca')return -1; return a.localeCompare(b); });
+  let html='';
+  marcas.forEach(mk=>{
+    const items=porMarca[mk];
+    const totM=items.reduce((s,c)=>s+Object.values(c.tallas||{}).reduce((a,b)=>a+b,0),0);
+    html+=`<div style="display:flex;align-items:center;gap:9px;margin:18px 0 10px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--gd);background:var(--gl);padding:5px 12px;border-radius:999px;white-space:nowrap"><i class="ti ti-tag"></i> ${mk}</div>
+      <div style="flex:1;height:1px;background:var(--grayb)"></div>
+      <div style="font-size:11px;color:var(--txm);font-weight:700">${totM} UND</div></div>`;
+    // 2) dentro de la marca: producto con color -> matriz (fusiona por nombre, sin mayúsculas); otros -> individual
+    const porProd={}; const orden=[];
+    items.forEach(c=>{
+      if(esCamiseta(c)&&c.color){ const pk=String(c.equipo).trim().toLowerCase(); if(!porProd[pk]){porProd[pk]=[];orden.push(pk);} porProd[pk].push(c); }
+      else { const ik='__ind__'+c.id; porProd[ik]=[c]; orden.push(ik); }
+    });
+    orden.forEach(pk=>{ const g=porProd[pk]; html += pk.indexOf('__ind__')===0 ? cardIndividual(g[0]) : matrizCard(g[0].equipo, g); });
   });
   return html;
+}
+// ── BUSCAR POR CÓDIGO (reusa el lector de códigos de barras) ─────────────────
+async function ventaCodigoManual(q){
+  q=(q||'').trim(); if(!q || !/^\d{3,}$/.test(q)) return; // solo si parece código
+  if(!MODO_SERVIDOR){ toast('La búsqueda por código requiere servidor'); return; }
+  try{
+    const r=await buscarCodigo(q);
+    if(!r||!r.encontrado){ toast('Código no registrado'); return; }
+    const cam=camisetas.find(c=>c.id===r.camiseta.id)||r.camiseta;
+    document.getElementById('cart-cam').value=String(cam.id);
+    const _sc=document.getElementById('cart-cam-search'); if(_sc)_sc.value=nombreProducto(cam);
+    const _l=document.getElementById('cart-cam-list'); if(_l){_l.style.display='none';_l.innerHTML='';}
+    carritoAutoPrecio(); carritoRenderTallaOpts(cam, r.talla);
+    const _t=document.getElementById('cart-talla'); if(_t)_t.value=r.talla; carritoStockInfo();
+    toast(`✓ ${nombreProducto(cam)} · ${r.talla}`);
+  }catch(e){ toast('No se pudo buscar el código'); }
+}
+async function stockCodigoManual(q){
+  q=(q||'').trim(); if(!q || !/^\d{3,}$/.test(q)) return;
+  if(!MODO_SERVIDOR){ toast('La búsqueda por código requiere servidor'); return; }
+  try{
+    const r=await buscarCodigo(q);
+    if(r&&r.encontrado&&r.camiseta){ const c=camisetas.find(x=>x.id===r.camiseta.id); if(c){ editarCamiseta(c.id); } else { toast('Ese código no está en la lista actual'); } }
+    else toast('Código no registrado');
+  }catch(e){ toast('No se pudo buscar el código'); }
 }
 // ── IMPORTADOR DE INVENTARIO (Excel) ─────────────────────────────────────────
 // Lee números tolerando formato venezolano: coma decimal ("6,5"), símbolos ($),
@@ -2771,7 +2838,7 @@ function renderStock(){
     </div>
     <div style="position:relative;margin-bottom:14px">
       <i class="ti ti-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--txh);font-size:17px"></i>
-      <input class="fi" id="stk-search" placeholder="Buscar: nombre, color, marca, proveedor…" oninput="filtrarStock()" style="padding-left:38px;margin:0" value="${stkQuery.replace(/"/g,'&quot;')}">
+      <input class="fi" id="stk-search" placeholder="Buscar: nombre, color, marca o código…" oninput="filtrarStock()" onkeydown="if(event.key==='Enter'){event.preventDefault();stockCodigoManual(this.value)}" style="padding-left:38px;margin:0" value="${stkQuery.replace(/"/g,'&quot;')}">
       ${stkQuery?`<button onclick="limpiarBusquedaStock()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--txh);font-size:18px"><i class="ti ti-x"></i></button>`:''}
     </div>
     ${camisetas.length===0?`<div class="empty"><i class="ti ti-box"></i><p>Sin productos en inventario.<br>Pulsa "Nuevo producto" para empezar.</p></div>`:''}
@@ -2789,12 +2856,24 @@ function abrirNuevaCamiseta(){
   document.getElementById('nc-min').value='5';
   document.getElementById('nc-precio').value='';
   document.getElementById('nc-precio2').value='';
+  {const _c=document.getElementById('nc-costo'); if(_c)_c.value='';}
+  ncMargen();
   document.getElementById('nc-id').value='';
   document.getElementById('nc-btn-borrar').style.display='none';
   {const _tt=document.getElementById('nc-tipotalla'); if(_tt)_tt.value='letras';}
   ncRenderTallas();
   document.getElementById('nc-total').textContent='0';
   openM('m-nueva-cam');
+}
+function ncMargen(){
+  const costo=+(document.getElementById('nc-costo')||{}).value||0;
+  const p1=+(document.getElementById('nc-precio')||{}).value||0;
+  const p2=+(document.getElementById('nc-precio2')||{}).value||0;
+  const el=document.getElementById('nc-margen'); if(!el) return;
+  if(!(costo>0)){ el.textContent=''; return; }
+  const m=(p,l)=> p>costo ? `${l}: ${(((p-costo)/p)*100).toFixed(0)}% (gana ${fmt(p-costo)})` : (p>0?`${l}: por debajo del costo`:'');
+  const parts=[m(p1,'P1'),m(p2,'P2')].filter(Boolean);
+  el.innerHTML=parts.length?('<i class="ti ti-percentage"></i> '+parts.join('  ·  ')):'';
 }
 function actualizarTotalNC(){
   let total;
@@ -2815,6 +2894,8 @@ function editarCamiseta(id){
   document.getElementById('nc-min').value=c.min;
   document.getElementById('nc-precio').value=c.precio!=null?c.precio:'';
   document.getElementById('nc-precio2').value=c.precio2!=null?c.precio2:'';
+  {const _c=document.getElementById('nc-costo'); if(_c)_c.value=(c.precio_costo!=null?c.precio_costo:'');}
+  ncMargen();
   document.getElementById('nc-id').value=c.id;
   document.getElementById('nc-btn-borrar').style.display='flex';
   {const _tt=document.getElementById('nc-tipotalla'); if(_tt)_tt.value=detectarTipoTalla(c.tallas);}
@@ -2847,6 +2928,7 @@ async function saveNuevaCamiseta(seguir=false){
   if(document.getElementById('nc-precio').value!==''&&+document.getElementById('nc-precio').value<0){toast('⚠️ El precio no puede ser negativo');return}
   const precioVal=document.getElementById('nc-precio').value;
   const precio2Val=document.getElementById('nc-precio2').value;
+  const costoVal=document.getElementById('nc-costo').value;
   const data={
     equipo,
     categoria,
@@ -2859,9 +2941,10 @@ async function saveNuevaCamiseta(seguir=false){
     prov:+document.getElementById('nc-prov').value||1,
     precio:precioVal!==''?+precioVal:null,
     precio2:precio2Val!==''?+precio2Val:null,
+    precio_costo:costoVal!==''?+costoVal:null,
   };
   const editId=+document.getElementById('nc-id').value;
-  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,color:data.color,departamento:data.departamento};
+  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,precio_costo:data.precio_costo,color:data.color,departamento:data.departamento};
   if(editId){
     // Editar — optimista: aplica local, cierra y muestra al instante; sincroniza por detrás
     const i=camisetas.findIndex(c=>c.id===editId);
@@ -3191,6 +3274,9 @@ function carritoSetPagoMetodo(i,m){
   let tasaKey=null;
   if(m.indexOf('otra:')===0){ tasaKey=m.slice(5); m='efectivo_otra'; }
   p.metodo=m;
+  if(m==='punto_venta'){ if(!PUNTOS_VENTA.includes(p.banco_receptor)) p.banco_receptor=PUNTOS_VENTA[0]; }
+  else if(m==='biopago'){ p.banco_receptor=CUENTA_BIOPAGO; }
+  else { delete p.banco_receptor; }
   const otros=carritoPagos.reduce((a,q,idx)=>idx===i?a:a+pagoEnUsd(q),0);
   const restUsd=Math.max(0,+(carritoTotalCobrar()-otros).toFixed(2));
   const met=METODOS_PAGO[m];
@@ -3215,8 +3301,10 @@ function carritoSetTasa(k){
   carritoPagos.forEach((q,idx)=>{ const m=METODOS_PAGO[q.metodo]; if(m&&m.bs && tNew>0){ q.monto=+(usds[idx]*tNew).toFixed(2); } });
   carritoRenderPagos();
 }
-function carritoSetPagoMonto(i,v){ carritoPagos[i].monto=+v||0; carritoRenderResumen(); carritoActualizarConfirm(); }
+function carritoSetPagoMonto(i,v){ carritoPagos[i].monto=+v||0; const u=document.getElementById('pago-usd-'+i); if(u&&document.activeElement!==u){ const e=pagoEnUsd(carritoPagos[i]); u.value=e>0?e.toFixed(2):''; } carritoRenderResumen(); carritoActualizarConfirm(); }
+function carritoSetPagoUsd(i,v){ const usd=parseFloat(String(v).replace(',','.'))||0; const p=carritoPagos[i]; const m=METODOS_PAGO[p.metodo]; p.monto=(m&&m.otra)?montoOtraExacto(usd,p.tasa):+(usd*tasaActual()).toFixed(2); const mi=document.getElementById('pago-monto-'+i); if(mi) mi.value=p.monto; carritoRenderResumen(); carritoActualizarConfirm(); }
 function carritoSetPagoRef(i,v){ carritoPagos[i].referencia=v; }
+function carritoSetPagoBanco(i,v){ carritoPagos[i].banco_receptor=v; }
 function carritoMontoExacto(i){
   const otros=carritoPagos.reduce((a,q,idx)=>idx===i?a:a+pagoEnUsd(q),0);
   const restUsd=Math.max(0,+(carritoTotalCobrar()-otros).toFixed(2));
@@ -3238,7 +3326,12 @@ function carritoRenderPagos(){
   cont.innerHTML=tasaHtml+carritoPagos.map((p,i)=>{
     const m=METODOS_PAGO[p.metodo]; const esBs=m&&m.bs; const esOtra=m&&m.otra;
     const opts=Object.entries(METODOS_PAGO).filter(([k])=>k!=='efectivo_otra').map(([k,mm])=>`<option value="${k}" ${k===p.metodo?'selected':''}>${mm.label}</option>`).join('')+tasasExtra().map(t=>`<option value="otra:${t.id}" ${(p.metodo==='efectivo_otra'&&p.tasaKey===t.id)?'selected':''}>Efectivo ${t.nombre}</option>`).join('');
-    const equiv=esBs?`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px"><button type="button" onclick="carritoMontoExacto(${i})" style="background:var(--gl);border:1px solid var(--gm);color:var(--gd);border-radius:7px;padding:4px 9px;font-size:11px;font-weight:800;cursor:pointer"><i class="ti ti-calculator" style="font-size:12px"></i> Poner Bs exactos</button><span style="font-size:10.5px;color:var(--txm)">≈ ${fmt(pagoEnUsd(p))}</span></div>`:'';
+    const equiv=esBs?`<div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+        <span style="font-size:12px;font-weight:700;color:var(--txm);white-space:nowrap">En $</span>
+        <input class="fi" id="pago-usd-${i}" style="width:86px;font-size:12.5px;padding:7px 9px" type="number" min="0" step="0.01" value="${pagoEnUsd(p)>0?pagoEnUsd(p).toFixed(2):''}" placeholder="$" oninput="carritoSetPagoUsd(${i},this.value)">
+        <button type="button" onclick="carritoMontoExacto(${i})" style="background:var(--gl);border:1px solid var(--gm);color:var(--gd);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap"><i class="ti ti-calculator" style="font-size:12px"></i> Bs exactos</button>
+        <span style="flex:1;text-align:right;font-size:10px;color:var(--txh)">a ${tasaActual().toLocaleString('es-VE')}</span>
+      </div>`:'';
     const otraCtrl = esOtra ? `<div style="display:flex;align-items:center;gap:8px;margin-top:6px">
         <span style="font-size:11px;color:var(--txm);white-space:nowrap">Tasa/$</span>
         <input class="fi" style="width:92px;font-size:12.5px;padding:8px 9px" type="number" min="0" step="0.0001" value="${p.tasa||''}" oninput="carritoSetPagoTasaOtra(${i},this.value)">
@@ -3247,12 +3340,16 @@ function carritoRenderPagos(){
       </div>` : '';
     const usaRef = p.metodo!=='efectivo_usd' && p.metodo!=='efectivo_bs' && p.metodo!=='efectivo_otra';
     const refHtml = usaRef ? `<input class="fi" style="width:100%;margin-top:6px;font-size:13px;padding:9px 10px" placeholder="Referencia (opcional)" value="${(p.referencia||'').replace(/"/g,'&quot;')}" oninput="carritoSetPagoRef(${i},this.value)">` : '';
+    let cuentaCtrl='';
+    if(p.metodo==='punto_venta'){
+      cuentaCtrl=`<div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="font-size:11.5px;color:var(--txm);white-space:nowrap"><i class="ti ti-credit-card"></i> Punto</span><select class="fi" style="flex:1;font-size:13px;padding:8px 9px" onchange="carritoSetPagoBanco(${i},this.value)">${PUNTOS_VENTA.map(t=>`<option ${p.banco_receptor===t?'selected':''}>${t}</option>`).join('')}</select></div>`;
+    }
     return `<div style="margin-bottom:8px">
       <div style="display:flex;gap:8px;align-items:center">
         <select class="fi" style="flex:1" onchange="carritoSetPagoMetodo(${i},this.value)">${opts}</select>
-        <input class="fi" style="width:104px" type="number" min="0" step="0.01" value="${p.monto}" placeholder="${esOtra?(p.moneda||'Moneda'):(esBs?'Bs':'$')}" oninput="carritoSetPagoMonto(${i},this.value)">
+        <input class="fi" id="pago-monto-${i}" style="width:104px" type="number" min="0" step="0.01" value="${p.monto}" placeholder="${esOtra?(p.moneda||'Moneda'):(esBs?'Bs':'$')}" oninput="carritoSetPagoMonto(${i},this.value)">
         <button onclick="carritoQuitarPago(${i})" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:18px"><i class="ti ti-x"></i></button>
-      </div>${equiv}${otraCtrl}${refHtml}
+      </div>${equiv}${otraCtrl}${cuentaCtrl}${refHtml}
     </div>`;
   }).join('');
   carritoRenderResumen(); carritoActualizarConfirm();
@@ -3366,9 +3463,9 @@ async function confirmarCarrito(){
     const payload={
       lineas: carrito.map(it=>({camiseta_id:it.camId, equipo:it.equipo, talla:it.talla, cantidad:it.cant, importe:+(it.precioUnit*it.cant*_dr).toFixed(2)})),
       canal, cliente, cedula, telefono,
-      pagos: carritoPagos.map(p=>{ const met=METODOS_PAGO[p.metodo]; const fac=esEfectivoMetodo(p.metodo)?_ratioCash:1; const o={metodo:p.metodo, monto:+(+p.monto*fac).toFixed(2)}; if(met&&met.bs){ o.tasa=tasaActual(); o.tasa_tipo=tasaElegida; } if(met&&met.otra){ o.tasa=+p.tasa||0; o.moneda=p.moneda||'Otra'; } if(p.referencia && String(p.referencia).trim()) o.referencia=String(p.referencia).trim(); return o; }).filter(o=>o.monto>0.005)
+      pagos: carritoPagos.map(p=>{ const met=METODOS_PAGO[p.metodo]; const fac=esEfectivoMetodo(p.metodo)?_ratioCash:1; const o={metodo:p.metodo, monto:+(+p.monto*fac).toFixed(2)}; if(met&&met.bs){ o.tasa=tasaActual(); o.tasa_tipo=tasaElegida; } if(met&&met.otra){ o.tasa=+p.tasa||0; o.moneda=p.moneda||'Otra'; } if(p.referencia && String(p.referencia).trim()) o.referencia=String(p.referencia).trim(); if(p.banco_receptor) o.banco_receptor=p.banco_receptor; return o; }).filter(o=>o.monto>0.005)
     };
-    const _rec={items:carrito.map(it=>({nombre:it.equipo,talla:it.talla,cant:it.cant,sub:+(it.precioUnit*it.cant*_dr).toFixed(2)})),total:carritoTotalCobrar(),pagos:carritoPagos.filter(p=>(+p.monto||0)>0).map(p=>({metodo:(METODOS_PAGO[p.metodo]?.label||p.metodo),monto:+p.monto||0})),cliente,fecha:new Date(),cajero:(role==='owner'?(CONFIG.nombre_owner||'Dueño'):role==='manager'?(CONFIG.nombre_manager||'Encargado'):'Trabajador')};
+    const _rec={items:carrito.map(it=>({nombre:it.equipo,talla:it.talla,cant:it.cant,sub:+(it.precioUnit*it.cant*_dr).toFixed(2)})),total:carritoTotalCobrar(),pagos:carritoPagos.filter(p=>(+p.monto||0)>0).map(p=>{const m=METODOS_PAGO[p.metodo]||{};return {metodo:(m.label||p.metodo),cuenta:p.banco_receptor||'',monto:+p.monto||0,bs:!!m.bs,moneda:(m.otra?(p.moneda||'Otra'):'')};}),cliente,fecha:new Date(),cajero:(role==='owner'?(CONFIG.nombre_owner||'Dueño'):role==='manager'?(CONFIG.nombre_manager||'Encargado'):'Trabajador')};
     const resp = await apiCall('POST','/ventas/carrito',payload);
     if(resp && resp.ventas){
       closeM('m-carrito');
@@ -3403,7 +3500,7 @@ function imprimirRecibo(){
   const f=r.fecha||new Date();
   const fh=f.toLocaleDateString('es-VE')+' '+f.toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'});
   const items=r.items.map(it=>`<div class="rc-row"><span>${it.cant} x ${it.nombre}${(it.talla&&it.talla!=='—'&&it.talla!=='U')?(' '+it.talla):''}</span><span>${fmt(it.sub)}</span></div>`).join('');
-  const pagos=(r.pagos||[]).map(p=>`<div class="rc-row rc-sm"><span>${p.metodo}</span><span>${fmt(p.monto)}</span></div>`).join('');
+  const pagos=(r.pagos||[]).map(p=>{const val=p.moneda?`${(+p.monto).toLocaleString('es-VE')} ${p.moneda}`:(p.bs?fmtBs(p.monto):fmt(p.monto));return `<div class="rc-row rc-sm"><span>${p.metodo}${p.cuenta?' · '+p.cuenta:''}</span><span>${val}</span></div>`;}).join('');
   document.getElementById('recibo-print').innerHTML=`<div class="rc-c rc-b" style="font-size:16px">${(MARCA.nombre||'').toUpperCase()}</div><div class="rc-c rc-sm">C.A · El Vigía, Mérida</div><hr class="rc-hr"><div class="rc-sm">${fh}${r.numero?(' · '+r.numero):''}</div>${r.cajero?`<div class="rc-sm">Atendió: ${r.cajero}</div>`:''}${r.cliente?`<div class="rc-sm">Cliente: ${r.cliente}</div>`:''}<hr class="rc-hr">${items}<hr class="rc-hr"><div class="rc-row rc-big"><span>TOTAL</span><span>${fmt(r.total)}</span></div>${pagos?`<div style="margin-top:4px">${pagos}</div>`:''}<hr class="rc-hr"><div class="rc-c rc-sm">¡Gracias por su compra!</div><div class="rc-c rc-sm">Vuelva pronto</div>`;
   window.print();
 }
@@ -3552,7 +3649,7 @@ async function _saveVentaInterno(){
     const i=camisetas.findIndex(c=>c.id===camId);
     camisetas[i].tallas[talla]-=cant;
     if(!MODO_SERVIDOR) sd('camisetas',camisetas);
-    const v={id:ids.ven++,camId,equipo:`${cam.equipo} ${cam.tipo} ${cam.temp}`,talla,cant,canal,cliente,imp,fecha:hoy(),pagos:datosPago()?[{...datosPago(),moneda:METODOS_PAGO[metodoPago].bs?'VES':'USD'}]:[]};
+    const v={id:ids.ven++,camId,equipo:nombreProducto(cam),talla,cant,canal,cliente,imp,fecha:hoy(),pagos:datosPago()?[{...datosPago(),moneda:METODOS_PAGO[metodoPago].bs?'VES':'USD'}]:[]};
     ventas.push(v); if(!MODO_SERVIDOR) sd('ventas',ventas);
     { const _r=await syncVenta({camiseta_id:camId,talla,cantidad:cant,canal,cliente,importe:imp,pago:datosPago()}); if(_r&&_r.venta){ v.id=_r.venta.id; v.cliente=_r.venta.cliente; v.numeroVenta=_r.venta.numero_venta; if(tipoVenta==='tienda') cliente=_r.venta.cliente; } }
     const tx={id:ids.tx++,tipo:'ingreso',desc,imp,canal,fecha:hoy()};
@@ -4108,7 +4205,17 @@ function abrirTx(modo='gasto'){
   document.getElementById('tx-canal-wrap').style.display='none';
   document.getElementById('tx-cat-wrap').style.display=txModoInversion?'none':'block';
   document.getElementById('tx-desc').placeholder=txModoInversion?'Ej: Compra de productos, mercancía nueva…':'Ej: Pago de luz, sueldo del personal…';
+  {const _mo=document.getElementById('tx-moneda'); if(_mo)_mo.value='usd';}
+  txConv();
   openM('m-tx');
+}
+function txConv(){
+  const mon=(document.getElementById('tx-moneda')||{}).value||'usd';
+  const val=+((document.getElementById('tx-imp')||{}).value)||0;
+  const lbl=document.getElementById('tx-imp-lbl'); if(lbl) lbl.textContent=mon==='bs'?'Importe (Bs)':'Importe ($)';
+  const conv=document.getElementById('tx-conv'); if(!conv) return;
+  if(mon==='bs' && val>0){ const t=tasaActual(); conv.textContent = t>0 ? ('≈ '+fmt(val/t)) : 'Configura la tasa en Ajustes'; }
+  else conv.textContent='';
 }
 function toggleTxTipo(){
   const tipo=document.getElementById('tx-tipo').value;
@@ -4121,10 +4228,13 @@ let txGuardando=false;
 async function saveTx(){
   if(txGuardando) return;
   const desc=document.getElementById('tx-desc').value.trim();
-  const imp=+document.getElementById('tx-imp').value;
+  const montoIn=+document.getElementById('tx-imp').value;
+  const monedaTx=(document.getElementById('tx-moneda')||{}).value||'usd';
   const tipo=document.getElementById('tx-tipo').value;
   if(!desc){toast('Escribe una descripción');return}
-  if(!(imp>0)){toast('⚠️ El importe debe ser mayor que 0');return}
+  if(!(montoIn>0)){toast('⚠️ El importe debe ser mayor que 0');return}
+  let imp=montoIn;
+  if(monedaTx==='bs'){ const t=tasaActual(); if(!(t>0)){toast('⚠️ No hay tasa configurada para convertir los Bs');return} imp=+(montoIn/t).toFixed(2); }
   const canal=txModoInversion?'Inversión (mercancía)':document.getElementById('tx-cat').value;
   txGuardando=true;
   try{
@@ -4179,15 +4289,18 @@ function desgloseCaja(fechaStr){
   const agg={}; let efUsd=0, efBs=0, digUsd=0; const efOtra={};
   vts.forEach(v=>(v.pagos||[]).forEach(p=>{
     const k=p.metodo||'otro'; const m=METODOS_PAGO[k]; const usd=pagoEnUsd(p);
-    if(!agg[k]) agg[k]={usd:0,bs:0};
-    agg[k].usd+=usd;
-    if(m&&m.bs) agg[k].bs+=(+p.monto||0);
+    // Punto de venta y Biopago se separan por cuenta/terminal (Banesco, Mercantil…)
+    const cuenta=(k==='punto_venta'||k==='biopago')?(p.banco_receptor||''):'';
+    const dk=cuenta?k+'|'+cuenta:k;
+    if(!agg[dk]) agg[dk]={k,cuenta,usd:0,bs:0};
+    agg[dk].usd+=usd;
+    if(m&&m.bs) agg[dk].bs+=(+p.monto||0);
     if(k==='efectivo_usd') efUsd+=(+p.monto||0);
     else if(k==='efectivo_bs') efBs+=(+p.monto||0);
     else if(k==='efectivo_otra'){ const cur=p.moneda||'Otra'; efOtra[cur]=(efOtra[cur]||0)+(+p.monto||0); }
     else digUsd+=usd;
   }));
-  const porMetodo=Object.entries(agg).map(([k,o])=>({k,label:(METODOS_PAGO[k]&&METODOS_PAGO[k].label)||k,usd:o.usd,bs:o.bs,ef:metodoEsEfectivo(k)}))
+  const porMetodo=Object.values(agg).map(o=>({k:o.k,label:((METODOS_PAGO[o.k]&&METODOS_PAGO[o.k].label)||o.k)+(o.cuenta?' · '+o.cuenta:''),usd:o.usd,bs:o.bs,ef:metodoEsEfectivo(o.k)}))
     .filter(x=>x.usd>0.009||x.bs>0.009).sort((a,b)=>b.usd-a.usd);
   return {porMetodo, efUsd, efBs, efOtra, digUsd, hayEfectivo:(efUsd>0.009||efBs>0.009||Object.keys(efOtra).length>0)};
 }
@@ -5016,6 +5129,8 @@ function abrirNomina(){
     <label class="fl" style="margin-top:0">Trabajador</label>
     <select class="fi" id="nom-emp" onchange="nominaSelEmpleado()">${lista.map(p=>`<option value="${p.id}">${p.nombre}${p.cargo?' · '+p.cargo:''}</option>`).join('')}</select>
     <div id="nom-info" style="font-size:12px;color:var(--txm);margin:9px 0 2px"></div>
+    <label class="fl">Periodo del pago</label>
+    <select class="fi" id="nom-periodo"><option value="semanal">Semanal</option><option value="quincenal">Quincenal</option><option value="mensual">Mensual</option></select>
     <label class="fl">Monto a pagar ($)</label>
     <input class="fi" id="nom-monto" type="number" min="0" step="0.01" placeholder="0.00">
     <div style="font-size:11.5px;color:var(--txh);margin-top:4px">Puedes cambiar el monto si es un adelanto o pago parcial.</div>
@@ -5029,6 +5144,7 @@ function nominaSelEmpleado(){
   nominaEmpleadoSel=id;
   const p=lista.find(x=>x.id===id); if(!p) return;
   document.getElementById('nom-monto').value=p.sueldo>0?p.sueldo:'';
+  {const _pe=document.getElementById('nom-periodo'); if(_pe)_pe.value=p.frecuencia||'quincenal';}
   const pagado=nominaPagadoMes(p.nombre);
   document.getElementById('nom-info').innerHTML=`Sueldo base: <b>${p.sueldo>0?fmt(p.sueldo):'—'}</b>${pagado>0?` · Este mes le has pagado <b>${fmt(pagado)}</b>`:''}`;
 }
@@ -5040,7 +5156,9 @@ async function pagarNomina(){
   if(!p){ toast('Elige un trabajador'); return; }
   const imp=+document.getElementById('nom-monto').value;
   if(!(imp>0)){ toast('⚠️ El monto debe ser mayor que 0'); return; }
-  const desc='Nómina: '+p.nombre+(p.cargo?' · '+p.cargo:'');
+  const periodo=(document.getElementById('nom-periodo')||{}).value||p.frecuencia||'quincenal';
+  const periodoLbl={semanal:'Semanal',quincenal:'Quincenal',mensual:'Mensual'}[periodo]||periodo;
+  const desc='Nómina '+periodoLbl+': '+p.nombre+(p.cargo?' · '+p.cargo:'');
   const canal='Sueldos';
   nominaGuardando=true;
   try{
@@ -5051,18 +5169,18 @@ async function pagarNomina(){
       transacciones.push({id:ids.tx++,tipo:'gasto',desc,imp,canal,fecha:hoy(),venta_id:null});
       sd('transacciones',transacciones);
     }
-    registrarActividad('caja',`Pago de nómina: ${p.nombre}`,`-$${imp.toFixed(2)}`);
+    registrarActividad('caja',`Pago de nómina (${periodoLbl}): ${p.nombre}`,`-$${imp.toFixed(2)}`);
     toast('Pago registrado ✓');
     if(curPage==='caja') renderCaja();
     if(curPage==='nomina') renderNomina();
-    nominaMostrarRecibo(p, imp);
+    nominaMostrarRecibo(p, imp, periodoLbl);
   }catch(e){/* apiCall ya mostró el error */}
   nominaGuardando=false;
 }
 let ultimoRecibo='';
-function nominaMostrarRecibo(p, imp){
+function nominaMostrarRecibo(p, imp, periodoLbl){
   const fechaTxt=new Date().toLocaleDateString('es-VE');
-  const reciboTxt=`🧾 RECIBO DE PAGO\n${MARCA.nombre}\n————————————\nTrabajador: ${p.nombre}${p.cargo?' · '+p.cargo:''}\nConcepto: Pago de nómina\nMonto: ${fmt(imp)}\nFecha: ${fechaTxt}\n————————————\n¡Gracias por tu trabajo!`;
+  const reciboTxt=`🧾 RECIBO DE PAGO\n${MARCA.nombre}\n————————————\nTrabajador: ${p.nombre}${p.cargo?' · '+p.cargo:''}\nConcepto: Pago de nómina${periodoLbl?' ('+periodoLbl+')':''}\nMonto: ${fmt(imp)}\nFecha: ${fechaTxt}\n————————————\n¡Gracias por tu trabajo!`;
   ultimoRecibo=reciboTxt;
   const cont=document.getElementById('nomina-body'); if(!cont) return;
   cont.innerHTML=`
@@ -5616,10 +5734,7 @@ function renderMisVentas(){
 
     <!-- VENTAS DE HOY POR MONEDA -->
     <div class="stitle" style="margin-top:0">Cobrado hoy</div>
-    <div class="mgrid" style="margin-bottom:16px">
-      <div class="mc mc-g"><i class="ti ti-cash mc-ico"></i><div class="mcl">En divisas ($)</div><div class="mcv">${fmt(ventasHoyPorMoneda().divisas)}</div><div class="mcs">efectivo $, Zelle, Binance…</div></div>
-      <div class="mc mc-cyan"><i class="ti ti-businessplan mc-ico"></i><div class="mcl">En bolívares</div><div class="mcv" style="font-size:19px">${fmtBs(ventasHoyPorMoneda().bs)}</div><div class="mcs">pago móvil, PDV, efectivo Bs</div></div>
-    </div>
+    ${cardsMonedaHoy()}
 
     <!-- BOTÓN NUEVA VENTA (todo por carrito) -->
     <button class="abtn abtn-g" onclick="abrirCarrito()" style="margin-top:0;margin-bottom:16px">
