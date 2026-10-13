@@ -42,6 +42,7 @@ class CamisetaController extends Controller
             'proveedor_id' => 'required|integer|between:1,4',
             'precio'       => 'nullable|numeric|min:0',
             'precio2'      => 'nullable|numeric|min:0',
+            'precio_costo' => 'nullable|numeric|min:0',
             'color'        => 'nullable|string|max:40',
             'departamento' => 'nullable|string|max:40',
         ]);
@@ -69,6 +70,7 @@ class CamisetaController extends Controller
             'proveedor_id'  => $request->proveedor_id,
             'precio'        => $request->input('precio'),
             'precio2'       => $request->input('precio2'),
+            'precio_costo'  => $request->input('precio_costo'),
             'color'         => $request->input('color'),
             'departamento'  => $request->input('departamento'),
             'created_at'    => now(),
@@ -110,6 +112,7 @@ class CamisetaController extends Controller
             'proveedor_id' => $request->input('proveedor_id', $camiseta->proveedor_id),
             'precio'       => $request->input('precio', $camiseta->precio),
             'precio2'      => $request->input('precio2', $camiseta->precio2),
+            'precio_costo' => $request->input('precio_costo', $camiseta->precio_costo),
             'color'        => $request->input('color', $camiseta->color),
             'departamento' => $request->input('departamento', $camiseta->departamento),
             'updated_at'   => now(),
@@ -242,6 +245,7 @@ class CamisetaController extends Controller
                 $tallas       = is_array($p['tallas'] ?? null) ? array_map(fn($v)=>max(0,(int)$v), $p['tallas']) : [];
                 $precio       = isset($p['precio'])  && $p['precio']  !== '' ? (float)$p['precio']  : null;
                 $precio2      = isset($p['precio2']) && $p['precio2'] !== '' ? (float)$p['precio2'] : null;
+                $precioCosto  = isset($p['precio_costo']) && $p['precio_costo'] !== '' ? (float)$p['precio_costo'] : null;
                 $min          = (int)($p['min'] ?? 5); if ($min < 0) $min = 0;
                 $prov         = (int)($p['prov'] ?? 1); if ($prov < 1 || $prov > 4) $prov = 1;
 
@@ -264,6 +268,7 @@ class CamisetaController extends Controller
                         'proveedor_id' => $prov,
                         'precio'       => $precio,
                         'precio2'      => $precio2,
+                        'precio_costo' => $precioCosto,
                         'updated_at'   => now(),
                     ]));
                     $actualizados++;
@@ -280,6 +285,7 @@ class CamisetaController extends Controller
                         'proveedor_id' => $prov,
                         'precio'       => $precio,
                         'precio2'      => $precio2,
+                        'precio_costo' => $precioCosto,
                         'created_at'   => now(),
                         'updated_at'   => now(),
                     ]));
@@ -313,6 +319,7 @@ class CamisetaController extends Controller
             'prov'   => (int)$c->proveedor_id,
             'precio' => isset($c->precio) && $c->precio !== null ? (float)$c->precio : null,
             'precio2' => isset($c->precio2) && $c->precio2 !== null ? (float)$c->precio2 : null,
+            'precio_costo' => isset($c->precio_costo) && $c->precio_costo !== null ? (float)$c->precio_costo : null,
             'color' => $c->color ?? null,
             'departamento' => $c->departamento ?? null,
         ];
