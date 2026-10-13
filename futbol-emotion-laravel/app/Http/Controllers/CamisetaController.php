@@ -24,9 +24,12 @@ class CamisetaController extends Controller
     public function index()
     {
         $camisetas = DB::table('camisetas')->orderBy('equipo')->get();
+        $codigos = DB::table('codigos_barras')->orderBy('id')->get()->groupBy('camiseta_id');
 
-        return response()->json($camisetas->map(function ($c) {
-            return $this->formatear($c);
+        return response()->json($camisetas->map(function ($c) use ($codigos) {
+            $f = $this->formatear($c);
+            $f['codigo'] = isset($codigos[$c->id]) ? ($codigos[$c->id][0]->codigo ?? null) : null;
+            return $f;
         }));
     }
 
@@ -190,21 +193,19 @@ class CamisetaController extends Controller
         $request->validate([
             'codigo'      => 'required|string|max:64',
             'camiseta_id' => 'required|integer|exists:camisetas,id',
-            'talla'       => 'required|string|max:10',
+            'talla'       => 'nullable|string|max:10',
         ]);
 
         $existente = DB::table('codigos_barras')->where('codigo', $request->codigo)->first();
-        if ($existente) {
-            return response()->json(['error' => 'Ese código ya está asociado a otra camiseta'], 422);
+        if ($existente && (int)$existente->camiseta_id !== (int)$request->camiseta_id) {
+            return response()->json(['error' => 'Ese código ya está asociado a otro producto'], 422);
         }
 
-        DB::table('codigos_barras')->insert([
-            'codigo'      => $request->codigo,
-            'camiseta_id' => $request->camiseta_id,
-            'talla'       => $request->talla,
-            'created_at'  => now(),
-            'updated_at'  => now(),
-        ]);
+        // Un código por producto: reasigna si ya existía
+        DB::table('codigos_barras')->updateOrInsert(
+            ['codigo' => $request->codigo],
+            ['camiseta_id' => $request->camiseta_id, 'talla' => (string)($request->input('talla', '') ?? ''), 'updated_at' => now(), 'created_at' => now()]
+        );
 
         return response()->json(['ok' => true], 201);
     }
@@ -248,6 +249,7 @@ class CamisetaController extends Controller
                 $precioCosto  = isset($p['precio_costo']) && $p['precio_costo'] !== '' ? (float)$p['precio_costo'] : null;
                 $min          = (int)($p['min'] ?? 5); if ($min < 0) $min = 0;
                 $prov         = (int)($p['prov'] ?? 1); if ($prov < 1 || $prov > 4) $prov = 1;
+                $codigos      = is_array($p['codigos'] ?? null) ? $p['codigos'] : [];
 
                 $cols = $this->tallasAColumnas($tallas);
 
@@ -258,6 +260,7 @@ class CamisetaController extends Controller
                 $ex = $q->first();
 
                 if ($ex) {
+                    $camId = $ex->id;
                     DB::table('camisetas')->where('id', $ex->id)->update(array_merge($cols, [
                         'tallas_json'  => json_encode($tallas, JSON_UNESCAPED_UNICODE),
                         'temporada'    => $temp,
@@ -273,7 +276,7 @@ class CamisetaController extends Controller
                     ]));
                     $actualizados++;
                 } else {
-                    DB::table('camisetas')->insert(array_merge($cols, [
+                    $camId = DB::table('camisetas')->insertGetId(array_merge($cols, [
                         'equipo'       => $equipo,
                         'temporada'    => $temp,
                         'tipo'         => 'Otro',
@@ -290,6 +293,18 @@ class CamisetaController extends Controller
                         'updated_at'   => now(),
                     ]));
                     $creados++;
+                }
+
+                // Códigos de barras: uno por talla (RE064-T6, RE064-T8…). Reasigna si ya existía.
+                if ($camId && !empty($codigos)) {
+                    foreach ($codigos as $tallaCod => $cod) {
+                        $cod = trim((string)$cod);
+                        if ($cod === '') continue;
+                        DB::table('codigos_barras')->updateOrInsert(
+                            ['codigo' => mb_substr($cod, 0, 64)],
+                            ['camiseta_id' => $camId, 'talla' => mb_substr((string)$tallaCod, 0, 10), 'updated_at' => now(), 'created_at' => now()]
+                        );
+                    }
                 }
             }
             DB::commit();
