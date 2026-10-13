@@ -2650,7 +2650,7 @@ function construirStockHTML(lista){
 }
 // ── BUSCAR POR CÓDIGO (reusa el lector de códigos de barras) ─────────────────
 async function ventaCodigoManual(q){
-  q=(q||'').trim(); if(!q || !/^\d{3,}$/.test(q)) return; // solo si parece código
+  q=(q||'').trim(); if(q.length<2) return; if(camisetas.some(c=>String(nombreProducto(c)).toLowerCase().includes(q.toLowerCase()))) return; // solo si parece código
   if(!MODO_SERVIDOR){ toast('La búsqueda por código requiere servidor'); return; }
   try{
     const r=await buscarCodigo(q);
@@ -2665,7 +2665,7 @@ async function ventaCodigoManual(q){
   }catch(e){ toast('No se pudo buscar el código'); }
 }
 async function stockCodigoManual(q){
-  q=(q||'').trim(); if(!q || !/^\d{3,}$/.test(q)) return;
+  q=(q||'').trim(); if(q.length<2) return; if(camisetas.some(c=>String(nombreProducto(c)).toLowerCase().includes(q.toLowerCase()))) return;
   if(!MODO_SERVIDOR){ toast('La búsqueda por código requiere servidor'); return; }
   try{
     const r=await buscarCodigo(q);
@@ -2727,28 +2727,28 @@ async function importarArchivo(input){
     datos.forEach(r=>{
       if(!r) return;
       const nombre=String(r[0]||'').trim();
-      const nota=String(r[9]||'').toLowerCase();
       if(!nombre) return;                  // fila vacía
       if(nombre.toLowerCase()==='nombre del producto') return; // encabezado colado
-      if(nota.includes('ejemplo')) return; // fila de ejemplo sin borrar
+      if(r.some(cell=>String(cell||'').toLowerCase().includes('ejemplo'))) return; // fila de ejemplo sin borrar
       const depto=String(r[1]||'').trim();
       const color=String(r[2]||'').trim();
       const marca=String(r[3]||'').trim();
       const talla=String(r[4]==null?'':r[4]).trim().toUpperCase();
-      const cant=impEntero(r[5]);
-      const p1=impNumero(r[6]), p2=impNumero(r[7]);
+      const codigo=String(r[5]==null?'':r[5]).trim();
+      const cant=impEntero(r[6]);
+      const p1=impNumero(r[7]), p2=impNumero(r[8]);
       const key=[nombre.toLowerCase(),color.toLowerCase(),marca.toLowerCase(),depto.toLowerCase()].join('|');
-      if(!grupos[key]) grupos[key]={equipo:nombre,departamento:depto,color,marca,tallas:{},precio:null,precio2:null};
+      if(!grupos[key]) grupos[key]={equipo:nombre,departamento:depto,color,marca,tallas:{},codigos:{},precio:null,precio2:null};
       const g=grupos[key];
       if(g.precio==null && p1!=null) g.precio=p1;
       if(g.precio2==null && p2!=null) g.precio2=p2;
-      if(talla){ g.tallas[talla]=(g.tallas[talla]||0)+cant; }
-      else { g.tallas['U']=(g.tallas['U']||0)+cant; }
+      if(talla){ g.tallas[talla]=(g.tallas[talla]||0)+cant; if(codigo) g.codigos[talla]=codigo; }
+      else { g.tallas['U']=(g.tallas['U']||0)+cant; if(codigo) g.codigos['U']=codigo; }
     });
     impProductos=Object.values(grupos).map(g=>{
       const conTallas=Object.keys(g.tallas).some(t=>t!=='U'); // sin talla => producto "otro"
-      let tallas=g.tallas;
-      if(conTallas){ delete tallas['U']; }
+      let tallas=g.tallas; let codigos=g.codigos||{};
+      if(conTallas){ delete tallas['U']; delete codigos['U']; }
       else { tallas={U:Object.values(g.tallas).reduce((a,b)=>a+b,0)}; }
       return {
         equipo:g.equipo,
@@ -2758,6 +2758,7 @@ async function importarArchivo(input){
         temporada: g.marca||'—',
         tallas,
         precio:g.precio, precio2:g.precio2,
+        codigos,
         min:5, prov:1,
       };
     }).filter(p=>p.equipo);
