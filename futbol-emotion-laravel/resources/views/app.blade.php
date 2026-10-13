@@ -1700,8 +1700,8 @@ const NOM_PERIODO={semanal:7,quincenal:15,mensual:30};
 function nominaUltimoPago(nombre){ const ps=transacciones.filter(t=>t.tipo==='gasto'&&t.canal==='Sueldos'&&String(t.desc||'').startsWith('Nómina: '+nombre)).map(t=>t.fecha).filter(Boolean).sort(); return ps.length?ps[ps.length-1]:null; }
 function nominaDiasDesde(fch){ try{ const d=Math.floor((Date.now()-new Date(fch+'T00:00:00').getTime())/86400000); return d<0?0:d; }catch(e){ return 0; } }
 function nominaPendientes(){ return personalLista().map(p=>{ const per=NOM_PERIODO[p.frecuencia]||15; const ult=nominaUltimoPago(p.nombre); const ref=ult||p.desde||hoy(); const dias=nominaDiasDesde(ref); return {p,dias,per,vence:dias>=per}; }).filter(x=>x.vence); }
-function tasasExtra(){ try{ const a=JSON.parse(CONFIG.tasas_extra||'[]'); return (Array.isArray(a)?a:[]).map(t=>({id:t.i||t.id, nombre:t.n||t.nombre, valor:t.v||t.valor})).filter(t=>t.id&&t.nombre); }catch(e){ return []; } }
-function tasasDisponibles(){ return [{k:'bcv',label:'Dólar BCV'},{k:'euro',label:'Euro BCV'},{k:'binance',label:'Binance'}].concat(tasasExtra().map(t=>({k:t.id,label:t.nombre}))); }
+function tasasExtra(){ try{ const a=JSON.parse(CONFIG.tasas_extra||'[]'); return (Array.isArray(a)?a:[]).map(t=>({id:t.i||t.id, nombre:t.n||t.nombre, valor:t.v||t.valor, moneda:!!(t.c||t.moneda)})).filter(t=>t.id&&t.nombre); }catch(e){ return []; } }
+function tasasDisponibles(){ return [{k:'bcv',label:'Dólar BCV'},{k:'euro',label:'Euro BCV'},{k:'binance',label:'Binance'}].concat(tasasExtra().filter(t=>!t.moneda).map(t=>({k:t.id,label:t.nombre}))); }
 function tasaNombre(k){ const o=tasasDisponibles().find(x=>x.k===k); return o?o.label:k; }
 function tasaValor(cual){
   const mapa={bcv:CONFIG.tasa_bcv,euro:CONFIG.tasa_euro,binance:CONFIG.tasa_binance};
@@ -2610,7 +2610,7 @@ function matrizCard(nombre, grupo){
   const filas=grupo.map(c=>{
     const tot=Object.values(c.tallas).reduce((a,b)=>a+b,0);
     const cells=cols.map(t=>{const v=c.tallas[t]||0;return `<td style="text-align:center;padding:9px 4px;font-weight:700;color:${v===0?'var(--r)':v<c.min?'var(--a)':'var(--tx)'}">${v}</td>`}).join('');
-    return `<tr onclick="editarCamiseta(${c.id})" style="cursor:pointer;border-top:1px solid var(--gray)"><td style="padding:9px 10px;font-weight:700;white-space:nowrap">${c.color||'\u2014'}</td>${cells}<td style="text-align:right;padding:9px 10px;font-weight:800;color:var(--g)">${tot}</td></tr>`;
+    return `<tr onclick="editarCamiseta(${c.id})" style="cursor:pointer;border-top:1px solid var(--gray)"><td style="padding:9px 10px;font-weight:700;white-space:nowrap">${c.color||'\u2014'}</td>${cells}<td style="text-align:right;padding:9px 10px;font-weight:800;color:var(--g)">${tot}</td><td style="text-align:right;padding:9px 10px;white-space:nowrap"><span style="color:var(--gd);background:var(--gl);font-size:11px;font-weight:800;padding:4px 9px;border-radius:7px"><i class="ti ti-pencil" style="font-size:12px"></i> Editar</span></td></tr>`;
   }).join('');
   return `<div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -2618,10 +2618,10 @@ function matrizCard(nombre, grupo){
       <div style="text-align:right"><div style="font-size:21px;font-weight:800">${totalG} <span style="font-size:12px;font-weight:700;color:var(--txm)">UND</span></div></div>
     </div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-      <tr style="background:var(--gray)"><th style="text-align:left;padding:7px 10px;font-size:11px;color:var(--txm)">Color</th>${heads}<th style="text-align:right;padding:7px 10px;font-size:11px;color:var(--txm)">Total</th></tr>
+      <tr style="background:var(--gray)"><th style="text-align:left;padding:7px 10px;font-size:11px;color:var(--txm)">Color</th>${heads}<th style="text-align:right;padding:7px 10px;font-size:11px;color:var(--txm)">Total</th><th></th></tr>
       ${filas}
     </table></div>
-    <div style="font-size:11px;color:var(--txh);margin-top:8px"><i class="ti ti-hand-finger"></i> Toca un color para editarlo o ajustar su stock</div>
+    <div style="font-size:11px;color:var(--txh);margin-top:8px"><i class="ti ti-pencil"></i> Toca «Editar» (o cualquier fila) para cambiar nombre, marca, precios, tallas y stock</div>
   </div>`;
 }
 function marcaDe(c){ return (c.temp&&c.temp!=='\u2014')?String(c.temp).trim():'Sin marca'; }
@@ -3325,7 +3325,7 @@ function carritoRenderPagos(){
   }
   cont.innerHTML=tasaHtml+carritoPagos.map((p,i)=>{
     const m=METODOS_PAGO[p.metodo]; const esBs=m&&m.bs; const esOtra=m&&m.otra;
-    const opts=Object.entries(METODOS_PAGO).filter(([k])=>k!=='efectivo_otra').map(([k,mm])=>`<option value="${k}" ${k===p.metodo?'selected':''}>${mm.label}</option>`).join('')+tasasExtra().map(t=>`<option value="otra:${t.id}" ${(p.metodo==='efectivo_otra'&&p.tasaKey===t.id)?'selected':''}>Efectivo ${t.nombre}</option>`).join('');
+    const opts=Object.entries(METODOS_PAGO).filter(([k])=>k!=='efectivo_otra').map(([k,mm])=>`<option value="${k}" ${k===p.metodo?'selected':''}>${mm.label}</option>`).join('')+tasasExtra().filter(t=>t.moneda).map(t=>`<option value="otra:${t.id}" ${(p.metodo==='efectivo_otra'&&p.tasaKey===t.id)?'selected':''}>Efectivo ${t.nombre}</option>`).join('');
     const equiv=esBs?`<div style="display:flex;align-items:center;gap:8px;margin-top:5px">
         <span style="font-size:12px;font-weight:700;color:var(--txm);white-space:nowrap">En $</span>
         <input class="fi" id="pago-usd-${i}" style="width:86px;font-size:12.5px;padding:7px 9px" type="number" min="0" step="0.01" value="${pagoEnUsd(p)>0?pagoEnUsd(p).toFixed(2):''}" placeholder="$" oninput="carritoSetPagoUsd(${i},this.value)">
@@ -4963,8 +4963,9 @@ function renderAjustes(){
       <div id="cfg-tasas-extra"></div>
       <div class="frow" style="margin-top:6px">
         <div style="flex:2"><label class="fl" style="margin-top:0">Nombre</label><input class="fi" id="cfg-nueva-tasa-nombre" maxlength="14" placeholder="Ej: Paralelo"></div>
-        <div style="flex:1"><label class="fl" style="margin-top:0">Bs por $</label><input class="fi" id="cfg-nueva-tasa-valor" type="number" min="0" step="0.0001" placeholder="Ej: 900"></div>
+        <div style="flex:1"><label class="fl" style="margin-top:0" id="cfg-nueva-tasa-lbl">Bs por $</label><input class="fi" id="cfg-nueva-tasa-valor" type="number" min="0" step="0.0001" placeholder="Ej: 900"></div>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--txm);cursor:pointer"><input type="checkbox" id="cfg-nueva-tasa-moneda" onchange="document.getElementById('cfg-nueva-tasa-lbl').textContent=this.checked?'Por $ (ej. pesos)':'Bs por $';document.getElementById('cfg-nueva-tasa-valor').placeholder=this.checked?'Ej: 4000':'Ej: 900'" style="width:16px;height:16px"> Es otra moneda (ej. Pesos) — se cobra como «Efectivo [nombre]»</label>
       <button class="abtn abtn-gray" onclick="agregarTasaExtra()" style="margin-top:8px"><i class="ti ti-plus"></i> Agregar tasa</button>
     </div>
 
@@ -5079,21 +5080,23 @@ function renderTasasExtra(){
   const cont=document.getElementById('cfg-tasas-extra'); if(!cont) return;
   const lista=tasasExtra();
   cont.innerHTML = lista.length ? lista.map(t=>`<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;background:var(--gray);border-radius:10px;padding:8px 12px">
-      <div style="flex:1"><div style="font-size:13px;font-weight:800">${t.nombre}</div><div style="font-size:11px;color:var(--txm)">${(parseFloat(String(t.valor).replace(',','.'))||0).toLocaleString('es-VE',{minimumFractionDigits:2})} Bs/$</div></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:800">${t.nombre}${t.moneda?' <span style="font-size:10px;font-weight:700;color:var(--gd);background:var(--gl);padding:1px 6px;border-radius:6px">moneda</span>':''}</div><div style="font-size:11px;color:var(--txm)">${(parseFloat(String(t.valor).replace(',','.'))||0).toLocaleString('es-VE',{minimumFractionDigits:2})} ${t.moneda?(t.nombre+' por $'):'Bs/$'}</div></div>
       <button onclick="borrarTasaExtra('${t.id}')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:18px"><i class="ti ti-trash"></i></button>
     </div>`).join('') : '<div style="font-size:12px;color:var(--txm);margin-bottom:6px">No tienes tasas personalizadas todav\u00eda.</div>';
 }
 async function agregarTasaExtra(){
   const nombre=(document.getElementById('cfg-nueva-tasa-nombre').value||'').trim();
   const valor=parseFloat((document.getElementById('cfg-nueva-tasa-valor').value||'').replace(',','.'))||0;
+  const esMoneda=!!(document.getElementById('cfg-nueva-tasa-moneda')||{}).checked;
   if(!nombre){ toast('Ponle un nombre a la tasa'); return; }
-  if(valor<=0){ toast('Pon un valor v\u00e1lido (Bs por $)'); return; }
+  if(valor<=0){ toast(esMoneda?'Pon cu\u00e1ntos '+nombre+' por $':'Pon un valor v\u00e1lido (Bs por $)'); return; }
   const lista=tasasExtra();
   if(lista.length>=4){ toast('M\u00e1ximo 4 tasas personalizadas'); return; }
-  lista.push({id:'x'+Math.random().toString(36).slice(2,6), nombre:nombre.slice(0,14), valor:valor.toFixed(4)});
+  lista.push({id:'x'+Math.random().toString(36).slice(2,6), nombre:nombre.slice(0,14), valor:valor.toFixed(4), moneda:esMoneda});
   await guardarTasasExtra(lista);
   document.getElementById('cfg-nueva-tasa-nombre').value='';
   document.getElementById('cfg-nueva-tasa-valor').value='';
+  {const _m=document.getElementById('cfg-nueva-tasa-moneda'); if(_m){_m.checked=false;} const _l=document.getElementById('cfg-nueva-tasa-lbl'); if(_l)_l.textContent='Bs por $';}
 }
 async function borrarTasaExtra(id){
   const lista=tasasExtra().filter(t=>t.id!==id);
@@ -5102,7 +5105,7 @@ async function borrarTasaExtra(id){
   await guardarTasasExtra(lista);
 }
 async function guardarTasasExtra(lista){
-  const compact=lista.map(t=>({i:t.id, n:String(t.nombre).slice(0,14), v:t.valor}));
+  const compact=lista.map(t=>({i:t.id, n:String(t.nombre).slice(0,14), v:t.valor, c:t.moneda?1:0}));
   const json=JSON.stringify(compact);
   try{
     if(MODO_SERVIDOR) await apiCall('POST','/config',{tasas_extra:json});
