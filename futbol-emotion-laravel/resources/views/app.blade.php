@@ -951,6 +951,8 @@ body.noche .ni.active::after{background:#a9abff}
     <input class="fi" id="nc-marca" placeholder="Ej: Gef, Oster, Ovejita…">
     <label class="fl">Color</label>
     <input class="fi" id="nc-color" placeholder="Ej: Blanco, Azul, Negro…">
+    <label class="fl">Tipo de prenda <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
+    <select class="fi" id="nc-tipoprenda"><option value="">— Ninguno —</option><option>Unisex</option><option>Niña</option><option>Niño</option><option>Dama</option><option>Caballero</option><option>Manga princesa (M/P)</option></select>
     <div id="nc-depto-ropa-wrap">
       <label class="fl">Departamento</label>
       <select class="fi" id="nc-depto-ropa"><option>Ropa escolar</option><option>Ropa general</option></select>
@@ -996,9 +998,7 @@ body.noche .ni.active::after{background:#a9abff}
       </div>
       <div>
         <label class="fl">Proveedor nº</label>
-        <select class="fi" id="nc-prov">
-          <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-        </select>
+        <select class="fi" id="nc-prov"></select>
       </div>
     </div>
 
@@ -1149,16 +1149,27 @@ if('serviceWorker' in navigator){
   });
 }
 
-let CONFIG={proveedor_1:'',proveedor_2:'',proveedor_3:'',proveedor_4:'',manager_bloqueado:'0'};
+let CONFIG={proveedor_1:'',proveedor_2:'',proveedor_3:'',proveedor_4:'',proveedores:'[]',manager_bloqueado:'0'};
 function nombreRol(r=role){
   if(r==='trabajador') return 'Caja';
   const nom=(r==='owner'?CONFIG.nombre_owner:CONFIG.nombre_manager)||'';
   if(nom.trim()) return nom.trim();
   return r==='manager'?'Encargado':'Gerente';
 }
+function proveedoresLista(){
+  try{ const a=JSON.parse(CONFIG.proveedores||'[]'); if(Array.isArray(a)&&a.length) return a.map(p=>({id:+(p.i||p.id), nombre:(p.n||p.nombre||'')})).filter(p=>p.id); }catch(e){}
+  return [1,2,3,4].map(n=>({id:n, nombre:(CONFIG['proveedor_'+n]||'')}));
+}
 function nombreProv(n){
-  const nom=(CONFIG['proveedor_'+n]||'').trim();
+  const p=proveedoresLista().find(x=>x.id===+n);
+  const nom=(p&&p.nombre||'').trim();
   return (role==='owner'&&nom) ? nom : 'Proveedor '+n;
+}
+function ncRenderProv(sel){
+  const el=document.getElementById('nc-prov'); if(!el) return;
+  const lista=proveedoresLista();
+  el.innerHTML=(lista.length?lista:[{id:1,nombre:''}]).map(p=>`<option value="${p.id}">${String(nombreProv(p.id)).replace(/</g,'&lt;')}</option>`).join('');
+  if(sel!=null) el.value=String(sel);
 }
 const TALLAS=['S','M','L','XL','XXL','10','12','14','16']; // compatibilidad / fallback
 const TALLAS_TODAS=[...TALLAS,'U']; // U = talla Única (productos que no son camisetas)
@@ -2468,8 +2479,9 @@ function renderPedido(){
       <div style="font-size:18px;font-weight:800;margin-bottom:4px">Hacer un pedido</div>
       <div style="font-size:13px;color:var(--txm);margin-bottom:16px">¿A qué proveedor le pides?</div>
       <div class="prov-grid">
-        ${[1,2,3,4].map(n=>{
-          const nom=(CONFIG['proveedor_'+n]||'').trim();
+        ${proveedoresLista().map(p=>{
+          const n=p.id;
+          const nom=(role==='owner'?(p.nombre||''):'').trim();
           const mostrar=(role==='owner'&&nom);
           return `<div class="prov-card" onclick="selProv(${n})">${mostrar
             ? `<div style="font-size:16px;font-weight:800;color:var(--gd);text-align:center;padding:0 8px;line-height:1.25">${nom}</div><div style="font-size:11px;font-weight:700;color:var(--txh);margin-top:4px">Proveedor ${n}</div>`
@@ -2630,6 +2642,7 @@ function matrizCard(nombre, grupo){
   if(!cols.length) cols=['S','M','L','XL','XXL'];
   const totalG=grupo.reduce((a,c)=>a+Object.values(c.tallas).reduce((x,y)=>x+y,0),0);
   const marca=(grupo.find(c=>c.temp&&c.temp!=='\u2014')||{}).temp||'';
+  const tprenda=(grupo.find(c=>c.tipo_prenda)||{}).tipo_prenda||'';
   const heads=cols.map(t=>`<th style="padding:7px 4px;font-size:11px;color:var(--txm);font-weight:700;text-align:center">${t}</th>`).join('');
   const filas=grupo.map(c=>{
     const tot=Object.values(c.tallas).reduce((a,b)=>a+b,0);
@@ -2638,7 +2651,7 @@ function matrizCard(nombre, grupo){
   }).join('');
   return `<div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div><div style="font-size:17px;font-weight:800">${nombre}</div><div style="font-size:12px;color:var(--txm)">\ud83d\udc55 ${(grupo.find(x=>x.departamento)||{}).departamento||'Ropa'}${marca?' \u00b7 '+marca:''} \u00b7 ${grupo.length} color${grupo.length!==1?'es':''}</div></div>
+      <div><div style="font-size:17px;font-weight:800">${nombre}</div><div style="font-size:12px;color:var(--txm)">\ud83d\udc55 ${(grupo.find(x=>x.departamento)||{}).departamento||'Ropa'}${marca?' \u00b7 '+marca:''}${tprenda?' \u00b7 '+tprenda:''} \u00b7 ${grupo.length} color${grupo.length!==1?'es':''}</div></div>
       <div style="text-align:right"><div style="font-size:21px;font-weight:800">${totalG} <span style="font-size:12px;font-weight:700;color:var(--txm)">UND</span></div>${(()=>{const pg=(grupo.find(c=>c.precio!=null)||{}).precio; return pg!=null?`<div style="font-size:11px;color:var(--gd);font-weight:700;margin-top:2px">${preciosMulti(pg)}</div>`:'';})()}</div>
     </div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -2762,8 +2775,9 @@ async function importarArchivo(input){
       const cant=impEntero(r[6]);
       const costo=impNumero(r[7]);
       const p1=impNumero(r[8]), p2=impNumero(r[9]);
+      const tipoPrenda=String(r[10]==null?'':r[10]).trim();
       const key=[nombre.toLowerCase(),color.toLowerCase(),marca.toLowerCase(),depto.toLowerCase()].join('|');
-      if(!grupos[key]) grupos[key]={equipo:nombre,departamento:depto,color,marca,tallas:{},codigos:{},precio:null,precio2:null,precioCosto:null};
+      if(!grupos[key]) grupos[key]={equipo:nombre,departamento:depto,color,marca,tipoPrenda:tipoPrenda||'',tallas:{},codigos:{},precio:null,precio2:null,precioCosto:null};
       const g=grupos[key];
       if(g.precio==null && p1!=null) g.precio=p1;
       if(g.precio2==null && p2!=null) g.precio2=p2;
@@ -2785,6 +2799,7 @@ async function importarArchivo(input){
         tallas,
         precio:g.precio, precio2:g.precio2,
         precio_costo:g.precioCosto,
+        tipo_prenda:g.tipoPrenda||null,
         codigos,
         min:5, prov:1,
       };
@@ -2880,12 +2895,14 @@ function abrirNuevaCamiseta(){
   document.getElementById('nc-equipo').value='';
   document.getElementById('nc-marca').value='';
   document.getElementById('nc-color').value='';
+  {const _tp=document.getElementById('nc-tipoprenda'); if(_tp)_tp.value='';}
   {const _d=document.getElementById('nc-depto-ropa'); if(_d)_d.selectedIndex=0;}
   document.getElementById('nc-min').value='5';
   document.getElementById('nc-precio').value='';
   document.getElementById('nc-precio2').value='';
   {const _c=document.getElementById('nc-costo'); if(_c)_c.value='';}
   {const _cu=document.getElementById('nc-cod-U'); if(_cu)_cu.value='';}
+  ncRenderProv();
   ncMargen();
   document.getElementById('nc-id').value='';
   document.getElementById('nc-btn-borrar').style.display='none';
@@ -2919,6 +2936,7 @@ function editarCamiseta(id){
   document.getElementById('nc-equipo').value=c.equipo;
   document.getElementById('nc-marca').value=(c.temp&&c.temp!=='—')?c.temp:'';
   document.getElementById('nc-color').value=c.color||'';
+  {const _tp=document.getElementById('nc-tipoprenda'); if(_tp)_tp.value=c.tipo_prenda||'';}
   {const _d=document.getElementById('nc-depto-ropa'); if(_d)_d.value=(c.departamento==='Ropa general')?'Ropa general':'Ropa escolar';}
   document.getElementById('nc-min').value=c.min;
   document.getElementById('nc-precio').value=c.precio!=null?c.precio:'';
@@ -2934,14 +2952,14 @@ function editarCamiseta(id){
   // Tipo y proveedor
   const selTipo=document.getElementById('nc-tipo');
   for(let o of selTipo.options) if(o.text===c.tipo){o.selected=true;break}
-  const selProv=document.getElementById('nc-prov');
-  for(let o of selProv.options) if(+o.value===c.prov){o.selected=true;break}
+  ncRenderProv(c.prov);
   actualizarTotalNC();
   openM('m-nueva-cam');
 }
 async function saveNuevaCamiseta(seguir=false){
   const equipo=document.getElementById('nc-equipo').value.trim();
   const color=document.getElementById('nc-color').value.trim();
+  const tipoPrenda=(document.getElementById('nc-tipoprenda')||{}).value||'';
   const esOtro=catProducto==='otro';
   if(!equipo){toast('Escribe el nombre del producto');return}
   if(!esOtro && !color){toast('Escribe el color de la prenda');return}
@@ -2966,6 +2984,7 @@ async function saveNuevaCamiseta(seguir=false){
     equipo,
     categoria,
     color,
+    tipo_prenda:tipoPrenda,
     departamento: esOtro ? categoria : ((document.getElementById('nc-depto-ropa')||{}).value||'Ropa'),
     temp:(document.getElementById('nc-marca').value.trim()||'—'),
     tipo:'Otro',
@@ -2978,7 +2997,7 @@ async function saveNuevaCamiseta(seguir=false){
     precio_costo:costoVal!==''?+costoVal:null,
   };
   const editId=+document.getElementById('nc-id').value;
-  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,precio_costo:data.precio_costo,color:data.color,departamento:data.departamento,codigos:data.codigos};
+  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,precio_costo:data.precio_costo,color:data.color,tipo_prenda:data.tipo_prenda,departamento:data.departamento,codigos:data.codigos};
   if(editId){
     // Editar — optimista: aplica local, cierra y muestra al instante; sincroniza por detrás
     const i=camisetas.findIndex(c=>c.id===editId);
@@ -5026,14 +5045,12 @@ function renderAjustes(){
       <button class="abtn abtn-g" onclick="guardarDatosCobro()"><i class="ti ti-check"></i> Guardar datos de cobro</button>
     </div>
 
-    <div class="stitle">Nombres de proveedores</div>
+    <div class="stitle">Proveedores</div>
     <div class="card">
-      <div style="font-size:14px;color:var(--txm);margin-bottom:12px">Solo tú ves los nombres. El encargado sigue viendo "Proveedor 1, 2, 3…".</div>
-      ${[1,2,3,4].map(n=>`
-        <label class="fl" style="margin-top:${n===1?0:10}px">Proveedor ${n}</label>
-        <input class="fi" id="cfg-prov-${n}" value="${(CONFIG['proveedor_'+n]||'').replace(/"/g,'&quot;')}" placeholder="Ej: Distribuidora López" maxlength="60">
-      `).join('')}
-      <button class="abtn abtn-g" onclick="guardarProveedores()"><i class="ti ti-check"></i> Guardar nombres</button>
+      <div style="font-size:14px;color:var(--txm);margin-bottom:12px">Agrega los que quieras. Solo tú ves los nombres; el encargado ve "Proveedor 1, 2, 3…".</div>
+      <div id="cfg-prov-lista">${proveedoresLista().map(p=>`<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span style="font-size:11px;color:var(--txh);font-weight:700;min-width:16px">${p.id}</span><input class="fi cfg-prov-in" data-id="${p.id}" value="${(p.nombre||'').replace(/"/g,'&quot;')}" placeholder="Ej: Distribuidora López" maxlength="60" style="flex:1"><button onclick="borrarProveedor(${p.id})" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:18px"><i class="ti ti-trash"></i></button></div>`).join('')}</div>
+      <button class="abtn abtn-gray" onclick="agregarProveedor()" style="margin-top:2px"><i class="ti ti-plus"></i> Agregar proveedor</button>
+      <button class="abtn abtn-g" onclick="guardarProveedores()" style="margin-top:8px"><i class="ti ti-check"></i> Guardar</button>
     </div>
 
     <div class="stitle">Acceso del encargado</div>
@@ -5508,16 +5525,27 @@ async function guardarTasaManual(){
   }catch(e){/* apiCall ya avisó */}
 }
 
+function proveedoresLeerInputs(){
+  const out=[]; document.querySelectorAll('#cfg-prov-lista .cfg-prov-in').forEach(el=>{ out.push({i:+el.dataset.id, n:(el.value||'').trim().slice(0,60)}); }); return out;
+}
+async function guardarProveedoresLista(lista){
+  const json=JSON.stringify(lista.map(p=>({i:+(p.i||p.id), n:(p.n||p.nombre||'').slice(0,60)})).filter(p=>p.i));
+  if(MODO_SERVIDOR) await apiCall('POST','/config',{proveedores:json});
+  CONFIG.proveedores=json;
+}
 async function guardarProveedores(){
-  const datos={};
-  [1,2,3,4].forEach(n=>{datos['proveedor_'+n]=document.getElementById('cfg-prov-'+n).value.trim()});
-  try{
-    if(MODO_SERVIDOR) await apiCall('POST','/config',datos);
-    CONFIG={...CONFIG, ...datos};
-    toast('Nombres guardados ✓');
-    registrarActividad('ajuste','Nombres de proveedores actualizados','');
-    renderAjustes();
-  }catch(e){/* apiCall ya avisó */}
+  try{ await guardarProveedoresLista(proveedoresLeerInputs()); toast('Proveedores guardados ✓'); registrarActividad('ajuste','Proveedores actualizados',''); renderAjustes(); }catch(e){}
+}
+async function agregarProveedor(){
+  const lista=proveedoresLeerInputs();
+  const nextId=lista.reduce((m,p)=>Math.max(m,+p.i||0),0)+1;
+  lista.push({i:nextId,n:''});
+  try{ await guardarProveedoresLista(lista); renderAjustes(); }catch(e){}
+}
+async function borrarProveedor(id){
+  const lista=proveedoresLeerInputs().filter(p=>+p.i!==+id);
+  if(!lista.length){ toast('Debe quedar al menos un proveedor'); return; }
+  try{ await guardarProveedoresLista(lista); renderAjustes(); }catch(e){}
 }
 
 async function toggleBloqueoManager(){
