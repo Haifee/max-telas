@@ -29,6 +29,7 @@ class ConfigController extends Controller
         'tasas_extra'       => '[]',
         'personal'          => '[]',
         'proveedores'       => '[]',
+        'marcas'            => '[]',
     ];
 
     public function index(Request $request)
@@ -54,6 +55,7 @@ class ConfigController extends Controller
                 'nombre_owner'      => $config['nombre_owner'],
                 'nombre_manager'    => $config['nombre_manager'],
                 'proveedores'       => $this->proveedoresSinNombres($config['proveedores']),
+                'marcas'            => $config['marcas'],
             ]);
         }
 
@@ -93,6 +95,8 @@ class ConfigController extends Controller
                 $valor = mb_substr(trim($valor), 0, 2000);
             } elseif ($clave === 'proveedores') {
                 $valor = mb_substr(trim($valor), 0, 3000);
+            } elseif ($clave === 'marcas') {
+                $valor = mb_substr(trim($valor), 0, 2000);
             } else {
                 $valor = mb_substr(trim($valor), 0, 60);
             }
