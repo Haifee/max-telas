@@ -28,7 +28,14 @@ class CamisetaController extends Controller
 
         return response()->json($camisetas->map(function ($c) use ($codigos) {
             $f = $this->formatear($c);
-            $f['codigo'] = isset($codigos[$c->id]) ? ($codigos[$c->id][0]->codigo ?? null) : null;
+            $map = [];
+            if (isset($codigos[$c->id])) {
+                foreach ($codigos[$c->id] as $row) {
+                    $t = (string)($row->talla !== null && $row->talla !== '' ? $row->talla : 'U');
+                    $map[$t] = $row->codigo;
+                }
+            }
+            $f['codigos'] = $map;
             return $f;
         }));
     }
@@ -42,12 +49,14 @@ class CamisetaController extends Controller
             'categoria'    => 'nullable|string|max:50',
             'tallas'       => 'required|array',
             'stock_minimo' => 'required|integer|min:0',
-            'proveedor_id' => 'required|integer|between:1,4',
+            'proveedor_id' => 'required|integer|min:1',
             'precio'       => 'nullable|numeric|min:0',
             'precio2'      => 'nullable|numeric|min:0',
             'precio_costo' => 'nullable|numeric|min:0',
+            'codigos'      => 'nullable|array',
             'color'        => 'nullable|string|max:40',
             'departamento' => 'nullable|string|max:40',
+            'tipo_prenda'  => 'nullable|string|max:40',
         ]);
 
         $tallas = $request->input('tallas', []);
@@ -76,9 +85,12 @@ class CamisetaController extends Controller
             'precio_costo'  => $request->input('precio_costo'),
             'color'         => $request->input('color'),
             'departamento'  => $request->input('departamento'),
+            'tipo_prenda'   => $request->input('tipo_prenda'),
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);
+
+        $this->guardarCodigos($id, $request->input('codigos', []));
 
         return response()->json($this->formatear(DB::table('camisetas')->find($id)), 201);
     }
@@ -118,8 +130,11 @@ class CamisetaController extends Controller
             'precio_costo' => $request->input('precio_costo', $camiseta->precio_costo),
             'color'        => $request->input('color', $camiseta->color),
             'departamento' => $request->input('departamento', $camiseta->departamento),
+            'tipo_prenda'  => $request->input('tipo_prenda', $camiseta->tipo_prenda),
             'updated_at'   => now(),
         ]);
+
+        $this->guardarCodigos($id, $request->input('codigos', []));
 
         return response()->json($this->formatear(DB::table('camisetas')->find($id)));
     }
@@ -219,6 +234,20 @@ class CamisetaController extends Controller
         return $out;
     }
 
+    // Asocia/reasigna códigos de barras por talla a un producto (uno por talla).
+    private function guardarCodigos($camId, $codigos)
+    {
+        if (!is_array($codigos) || !$camId) return;
+        foreach ($codigos as $talla => $cod) {
+            $cod = trim((string)$cod);
+            if ($cod === '') continue;
+            DB::table('codigos_barras')->updateOrInsert(
+                ['codigo' => mb_substr($cod, 0, 64)],
+                ['camiseta_id' => $camId, 'talla' => mb_substr((string)$talla, 0, 10), 'updated_at' => now(), 'created_at' => now()]
+            );
+        }
+    }
+
     // Importación masiva desde Excel: el frontend envía los productos ya agrupados.
     // Hace upsert por (equipo + color + departamento): si existe, actualiza; si no, crea.
     // Todo dentro de una transacción (si algo falla, no queda nada a medias).
@@ -242,13 +271,14 @@ class CamisetaController extends Controller
                 $categoria    = trim((string)($p['categoria'] ?? 'camiseta')) ?: 'camiseta';
                 $color        = isset($p['color']) && $p['color'] !== '' ? mb_substr(trim((string)$p['color']),0,40) : null;
                 $departamento = isset($p['departamento']) && $p['departamento'] !== '' ? mb_substr(trim((string)$p['departamento']),0,40) : null;
+                $tipoPrenda   = isset($p['tipo_prenda']) && $p['tipo_prenda'] !== '' ? mb_substr(trim((string)$p['tipo_prenda']),0,40) : null;
                 $temp         = isset($p['temporada']) && $p['temporada'] !== '' ? mb_substr(trim((string)$p['temporada']),0,60) : '—';
                 $tallas       = is_array($p['tallas'] ?? null) ? array_map(fn($v)=>max(0,(int)$v), $p['tallas']) : [];
                 $precio       = isset($p['precio'])  && $p['precio']  !== '' ? (float)$p['precio']  : null;
                 $precio2      = isset($p['precio2']) && $p['precio2'] !== '' ? (float)$p['precio2'] : null;
                 $precioCosto  = isset($p['precio_costo']) && $p['precio_costo'] !== '' ? (float)$p['precio_costo'] : null;
                 $min          = (int)($p['min'] ?? 5); if ($min < 0) $min = 0;
-                $prov         = (int)($p['prov'] ?? 1); if ($prov < 1 || $prov > 4) $prov = 1;
+                $prov         = (int)($p['prov'] ?? 1); if ($prov < 1) $prov = 1;
                 $codigos      = is_array($p['codigos'] ?? null) ? $p['codigos'] : [];
 
                 $cols = $this->tallasAColumnas($tallas);
@@ -267,6 +297,7 @@ class CamisetaController extends Controller
                         'categoria'    => $categoria,
                         'color'        => $color,
                         'departamento' => $departamento,
+                        'tipo_prenda'  => $tipoPrenda,
                         'stock_minimo' => $min,
                         'proveedor_id' => $prov,
                         'precio'       => $precio,
@@ -283,6 +314,7 @@ class CamisetaController extends Controller
                         'categoria'    => $categoria,
                         'color'        => $color,
                         'departamento' => $departamento,
+                        'tipo_prenda'  => $tipoPrenda,
                         'tallas_json'  => json_encode($tallas, JSON_UNESCAPED_UNICODE),
                         'stock_minimo' => $min,
                         'proveedor_id' => $prov,
@@ -296,16 +328,7 @@ class CamisetaController extends Controller
                 }
 
                 // Códigos de barras: uno por talla (RE064-T6, RE064-T8…). Reasigna si ya existía.
-                if ($camId && !empty($codigos)) {
-                    foreach ($codigos as $tallaCod => $cod) {
-                        $cod = trim((string)$cod);
-                        if ($cod === '') continue;
-                        DB::table('codigos_barras')->updateOrInsert(
-                            ['codigo' => mb_substr($cod, 0, 64)],
-                            ['camiseta_id' => $camId, 'talla' => mb_substr((string)$tallaCod, 0, 10), 'updated_at' => now(), 'created_at' => now()]
-                        );
-                    }
-                }
+                $this->guardarCodigos($camId, $codigos);
             }
             DB::commit();
         } catch (\Throwable $e) {
@@ -337,6 +360,7 @@ class CamisetaController extends Controller
             'precio_costo' => isset($c->precio_costo) && $c->precio_costo !== null ? (float)$c->precio_costo : null,
             'color' => $c->color ?? null,
             'departamento' => $c->departamento ?? null,
+            'tipo_prenda' => $c->tipo_prenda ?? null,
         ];
     }
 }

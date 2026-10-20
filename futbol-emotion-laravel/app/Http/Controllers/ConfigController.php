@@ -28,6 +28,7 @@ class ConfigController extends Controller
         'nombre_manager'    => '',
         'tasas_extra'       => '[]',
         'personal'          => '[]',
+        'proveedores'       => '[]',
     ];
 
     public function index(Request $request)
@@ -52,6 +53,7 @@ class ConfigController extends Controller
                 'clave_cierre_activa' => !empty($config['clave_cierre']) ? '1' : '0',
                 'nombre_owner'      => $config['nombre_owner'],
                 'nombre_manager'    => $config['nombre_manager'],
+                'proveedores'       => $this->proveedoresSinNombres($config['proveedores']),
             ]);
         }
 
@@ -89,6 +91,8 @@ class ConfigController extends Controller
                 $valor = mb_substr(trim($valor), 0, 240);
             } elseif ($clave === 'personal') {
                 $valor = mb_substr(trim($valor), 0, 2000);
+            } elseif ($clave === 'proveedores') {
+                $valor = mb_substr(trim($valor), 0, 3000);
             } else {
                 $valor = mb_substr(trim($valor), 0, 60);
             }
@@ -156,6 +160,18 @@ class ConfigController extends Controller
     /**
      * GET a una URL con timeout corto. Devuelve el JSON como array o null.
      */
+    // Para el encargado: solo los IDs de proveedores, sin los nombres (privacidad).
+    private function proveedoresSinNombres($json)
+    {
+        try {
+            $arr = json_decode($json ?: '[]', true);
+            if (is_array($arr)) {
+                return json_encode(array_values(array_map(fn($p) => ['i' => $p['i'] ?? ($p['id'] ?? null)], $arr)));
+            }
+        } catch (\Throwable $e) {}
+        return '[]';
+    }
+
     private function pedirJson(string $url)
     {
         try {
