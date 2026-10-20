@@ -948,7 +948,8 @@ body.noche .ni.active::after{background:#a9abff}
     <label class="fl" id="nc-lbl-nombre">Nombre del producto</label>
     <input class="fi" id="nc-equipo" placeholder="Ej: Camisa escolar, Licuadora Oster…">
     <label class="fl">Marca <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
-    <input class="fi" id="nc-marca" placeholder="Ej: Gef, Oster, Ovejita…">
+    <select class="fi" id="nc-marca-sel" onchange="ncMarcaSel()"></select>
+    <input class="fi" id="nc-marca" placeholder="Escribe la marca nueva" style="display:none;margin-top:6px">
     <label class="fl">Color</label>
     <input class="fi" id="nc-color" placeholder="Ej: Blanco, Azul, Negro…">
     <label class="fl">Tipo de prenda <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
@@ -1149,7 +1150,7 @@ if('serviceWorker' in navigator){
   });
 }
 
-let CONFIG={proveedor_1:'',proveedor_2:'',proveedor_3:'',proveedor_4:'',proveedores:'[]',manager_bloqueado:'0'};
+let CONFIG={proveedor_1:'',proveedor_2:'',proveedor_3:'',proveedor_4:'',proveedores:'[]',marcas:'[]',manager_bloqueado:'0'};
 function nombreRol(r=role){
   if(r==='trabajador') return 'Caja';
   const nom=(r==='owner'?CONFIG.nombre_owner:CONFIG.nombre_manager)||'';
@@ -1170,6 +1171,26 @@ function ncRenderProv(sel){
   const lista=proveedoresLista();
   el.innerHTML=(lista.length?lista:[{id:1,nombre:''}]).map(p=>`<option value="${p.id}">${String(nombreProv(p.id)).replace(/</g,'&lt;')}</option>`).join('');
   if(sel!=null) el.value=String(sel);
+}
+function marcasConfig(){ try{ const a=JSON.parse(CONFIG.marcas||'[]'); return Array.isArray(a)?a.map(m=>String(m).trim()).filter(Boolean):[]; }catch(e){ return []; } }
+function marcasLista(){
+  const map=new Map();
+  marcasConfig().forEach(m=>map.set(m.toLowerCase(),m));
+  (typeof camisetas!=='undefined'?camisetas:[]).forEach(c=>{ const t=(c.temp&&c.temp!=='\u2014')?String(c.temp).trim():''; if(t&&!map.has(t.toLowerCase())) map.set(t.toLowerCase(),t); });
+  return [...map.values()].sort((a,b)=>a.localeCompare(b));
+}
+function ncRenderMarcas(sel){
+  const sl=document.getElementById('nc-marca-sel'), inp=document.getElementById('nc-marca'); if(!sl||!inp) return;
+  const selv=(sel&&sel!=='\u2014')?String(sel).trim():'';
+  const lista=marcasLista().slice();
+  if(selv && !lista.some(m=>m.toLowerCase()===selv.toLowerCase())) lista.unshift(selv);
+  sl.innerHTML='<option value="">\u2014 Sin marca \u2014</option>'+lista.map(m=>`<option value="${m.replace(/"/g,'&quot;')}">${m.replace(/</g,'&lt;')}</option>`).join('')+'<option value="__nueva__">+ Nueva marca\u2026</option>';
+  sl.value=selv||''; inp.value=selv||''; inp.style.display='none';
+}
+function ncMarcaSel(){
+  const sl=document.getElementById('nc-marca-sel'), inp=document.getElementById('nc-marca'); if(!sl||!inp) return;
+  if(sl.value==='__nueva__'){ inp.value=''; inp.style.display='block'; inp.focus(); }
+  else { inp.value=sl.value; inp.style.display='none'; }
 }
 const TALLAS=['S','M','L','XL','XXL','10','12','14','16']; // compatibilidad / fallback
 const TALLAS_TODAS=[...TALLAS,'U']; // U = talla Única (productos que no son camisetas)
@@ -2893,7 +2914,7 @@ function abrirNuevaCamiseta(){
   document.getElementById('nc-U').value=0;
   setCatProducto('camiseta');
   document.getElementById('nc-equipo').value='';
-  document.getElementById('nc-marca').value='';
+  ncRenderMarcas('');
   document.getElementById('nc-color').value='';
   {const _tp=document.getElementById('nc-tipoprenda'); if(_tp)_tp.value='';}
   {const _d=document.getElementById('nc-depto-ropa'); if(_d)_d.selectedIndex=0;}
@@ -2934,7 +2955,7 @@ function editarCamiseta(id){
   {const _b=document.getElementById('nc-btn-seguir'); if(_b)_b.style.display='none';}
   document.getElementById('nc-categoria').value=esCamiseta(c)?'':c.categoria;
   document.getElementById('nc-equipo').value=c.equipo;
-  document.getElementById('nc-marca').value=(c.temp&&c.temp!=='—')?c.temp:'';
+  ncRenderMarcas(c.temp);
   document.getElementById('nc-color').value=c.color||'';
   {const _tp=document.getElementById('nc-tipoprenda'); if(_tp)_tp.value=c.tipo_prenda||'';}
   {const _d=document.getElementById('nc-depto-ropa'); if(_d)_d.value=(c.departamento==='Ropa general')?'Ropa general':'Ropa escolar';}
@@ -2996,6 +3017,7 @@ async function saveNuevaCamiseta(seguir=false){
     precio2:precio2Val!==''?+precio2Val:null,
     precio_costo:costoVal!==''?+costoVal:null,
   };
+  {const m=(data.temp||'').trim(); if(m&&m!=='\u2014'){ let arr=[]; try{arr=JSON.parse(CONFIG.marcas||'[]');}catch(e){} if(!arr.some(x=>String(x).toLowerCase()===m.toLowerCase())){ arr.push(m); const j=JSON.stringify(arr); CONFIG.marcas=j; if(MODO_SERVIDOR) apiCall('POST','/config',{marcas:j}).catch(()=>{}); } }}
   const editId=+document.getElementById('nc-id').value;
   const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,precio_costo:data.precio_costo,color:data.color,tipo_prenda:data.tipo_prenda,departamento:data.departamento,codigos:data.codigos};
   if(editId){
@@ -3220,7 +3242,11 @@ function carritoRenderTallaOpts(c,mantener){
   const sel=document.getElementById('cart-talla'); if(!sel) return;
   const tallas=c?tallasDe(c):['S','M','L','XL','XXL'];
   const cur=mantener||sel.value;
-  sel.innerHTML=tallas.map(t=>`<option>${t}</option>`).join('');
+  sel.innerHTML=tallas.map(t=>{
+    const st=c?(c.tallas[t]||0):0;
+    const lbl=(t==='U'?'Única':t)+(c?(st>0?` \u00b7 ${st} und`:' \u00b7 agotado'):'');
+    return `<option value="${t}">${lbl}</option>`;
+  }).join('');
   if(tallas.includes(cur)) sel.value=cur; else if(tallas.length) sel.value=tallas[0];
 }
 function carritoSelCam(id){
@@ -5053,6 +5079,15 @@ function renderAjustes(){
       <button class="abtn abtn-g" onclick="guardarProveedores()" style="margin-top:8px"><i class="ti ti-check"></i> Guardar</button>
     </div>
 
+    <div class="stitle">Marcas</div>
+    <div class="card">
+      <div style="font-size:14px;color:var(--txm);margin-bottom:12px">Las marcas que agregues aquí salen como opción al crear productos. Las que ya usas en el inventario también aparecen solas.</div>
+      <div id="cfg-marca-lista">${marcasConfig().length?marcasConfig().map(m=>`<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input class="fi cfg-marca-in" value="${String(m).replace(/"/g,'&quot;')}" maxlength="40" style="flex:1"><button onclick="borrarMarcaFila(this)" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:18px"><i class="ti ti-trash"></i></button></div>`).join(''):'<div style="font-size:12px;color:var(--txm);margin-bottom:6px">Aún no tienes marcas fijas. Agrega la primera.</div>'}</div>
+      <input class="fi" id="cfg-marca-nueva" placeholder="Ej: Gef" maxlength="40">
+      <button class="abtn abtn-gray" onclick="agregarMarca()" style="margin-top:8px"><i class="ti ti-plus"></i> Agregar marca</button>
+      <button class="abtn abtn-g" onclick="guardarMarcas()" style="margin-top:8px"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+
     <div class="stitle">Acceso del encargado</div>
     <div class="card">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -5547,6 +5582,27 @@ async function borrarProveedor(id){
   if(!lista.length){ toast('Debe quedar al menos un proveedor'); return; }
   try{ await guardarProveedoresLista(lista); renderAjustes(); }catch(e){}
 }
+function marcasLeerInputs(){
+  const out=[], seen=new Set();
+  document.querySelectorAll('#cfg-marca-lista .cfg-marca-in').forEach(el=>{ const v=(el.value||'').trim(); if(v){ const k=v.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(v); } } });
+  return out;
+}
+async function guardarMarcasLista(lista){
+  const json=JSON.stringify(lista.slice(0,100));
+  if(MODO_SERVIDOR) await apiCall('POST','/config',{marcas:json});
+  CONFIG.marcas=json;
+}
+async function guardarMarcas(){
+  try{ await guardarMarcasLista(marcasLeerInputs()); toast('Marcas guardadas \u2713'); renderAjustes(); }catch(e){}
+}
+async function agregarMarca(){
+  const nueva=((document.getElementById('cfg-marca-nueva')||{}).value||'').trim();
+  if(!nueva){ toast('Escribe la marca'); return; }
+  const lista=marcasLeerInputs();
+  if(!lista.some(m=>m.toLowerCase()===nueva.toLowerCase())) lista.push(nueva);
+  try{ await guardarMarcasLista(lista); renderAjustes(); }catch(e){}
+}
+function borrarMarcaFila(btn){ const row=btn.closest('div'); if(row) row.remove(); guardarMarcas(); }
 
 async function toggleBloqueoManager(){
   const bloqueadoAhora=CONFIG.manager_bloqueado==='1';
