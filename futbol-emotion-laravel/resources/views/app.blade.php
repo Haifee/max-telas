@@ -657,7 +657,12 @@ body.noche .ni.active::after{background:#a9abff}
     <div id="cart-stock-info" style="font-size:12px;margin-top:6px"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <div style="flex:1"><label class="fl">Cantidad</label><input class="fi" id="cart-cant" type="number" min="1" value="1"></div>
-      <div style="flex:1"><label class="fl">Precio ($ c/u)</label><input class="fi" id="cart-precio" type="number" min="0" step="0.01" oninput="carritoPrecioMulti()"><div id="cart-precio-multi" style="font-size:10.5px;color:var(--gd);font-weight:700;margin-top:3px;min-height:12px"></div></div>
+      <div style="flex:1"><label class="fl">Precio por unidad</label>
+      <div style="display:flex;gap:6px">
+        <div style="flex:1"><div style="font-size:10px;color:var(--txm);font-weight:700;margin-bottom:2px">$</div><input class="fi" id="cart-precio" type="number" min="0" step="0.01" placeholder="$" oninput="carritoPrecioMulti()"></div>
+        <div style="flex:1"><div style="font-size:10px;color:var(--txm);font-weight:700;margin-bottom:2px">Bs</div><input class="fi" id="cart-precio-bs" type="text" inputmode="decimal" placeholder="Bs" oninput="carritoPrecioDesdeBs(this.value)" style="color:var(--gd);font-weight:700"></div>
+        <div style="flex:1"><div style="font-size:10px;color:var(--txm);font-weight:700;margin-bottom:2px">Pesos</div><input class="fi" id="cart-precio-ps" type="text" inputmode="numeric" placeholder="Ps" oninput="carritoPrecioDesdePs(this.value)" style="color:var(--gd);font-weight:700"></div>
+      </div></div>
     </div>
     <button class="abtn abtn-gray abtn-sm" onclick="carritoAgregarProducto()" style="margin-top:8px"><i class="ti ti-plus"></i> Agregar al carrito</button>
     </div>
@@ -3235,14 +3240,13 @@ function carritoAutoPrecio(){
   carritoPrecioMulti();
 }
 function carritoPrecioMulti(){
-  const el=document.getElementById('cart-precio-multi'); if(!el) return;
   const p=+((document.getElementById('cart-precio')||{}).value)||0;
-  if(!(p>0)){ el.textContent=''; return; }
-  const tb=tasaActual(), tp=tasaPesosValor(); const parts=[];
-  if(tb>0) parts.push(fmtBs(p*tb));
-  if(tp>0) parts.push(Math.round(p*tp).toLocaleString('es-CO')+' Ps');
-  el.textContent = parts.length?('\u2248 '+parts.join(' \u00b7 ')):'';
+  const tb=tasaActual(), tp=tasaPesosValor();
+  const bs=document.getElementById('cart-precio-bs'); if(bs&&document.activeElement!==bs) bs.value=(p>0&&tb>0)?(p*tb).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
+  const ps=document.getElementById('cart-precio-ps'); if(ps&&document.activeElement!==ps) ps.value=(p>0&&tp>0)?Math.round(p*tp).toLocaleString('es-CO'):'';
 }
+function carritoPrecioDesdeBs(v){ const tb=tasaActual(); if(!(tb>0)) return; const bs=parseFloat(String(v).replace(/\./g,'').replace(',','.'))||0; const p=tb>0?bs/tb:0; const pi=document.getElementById('cart-precio'); if(pi) pi.value=p>0?p.toFixed(2):''; carritoPrecioMulti(); }
+function carritoPrecioDesdePs(v){ const tp=tasaPesosValor(); if(!(tp>0)) return; const ps=parseFloat(String(v).replace(/\./g,'').replace(/,/g,''))||0; const p=tp>0?ps/tp:0; const pi=document.getElementById('cart-precio'); if(pi) pi.value=p>0?p.toFixed(2):''; carritoPrecioMulti(); }
 function carritoEnCarrito(camId,talla){ return carrito.filter(it=>it.camId===camId&&it.talla===talla).reduce((a,it)=>a+it.cant,0); }
 function carritoAgregarProducto(){
   const camId=+document.getElementById('cart-cam').value;
