@@ -380,11 +380,11 @@ body.noche .ni.active::after{background:#a9abff}
       </div>
       <div class="lrole" id="lr-o" onclick="selRole('owner')">
         <div class="lrico ico-o"><i class="ti ti-crown"></i></div>
-        <div><div class="lrname">Soy el dueño</div><div class="lrdesc">Apruebo pedidos y veo todo</div></div>
+        <div><div class="lrname">Soy el gerente</div><div class="lrdesc">Apruebo pedidos y veo todo</div></div>
       </div>
       <div class="lrole" id="lr-t" onclick="selRole('trabajador')">
         <div class="lrico ico-t"><i class="ti ti-building-store"></i></div>
-        <div><div class="lrname">Soy el trabajador</div><div class="lrdesc">Solo registrar ventas en la caja</div></div>
+        <div><div class="lrname">Caja</div><div class="lrdesc">Solo registrar ventas</div></div>
       </div>
     </div>
     <label class="lpilab">PIN de acceso</label>
@@ -657,7 +657,7 @@ body.noche .ni.active::after{background:#a9abff}
     <div id="cart-stock-info" style="font-size:12px;margin-top:6px"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <div style="flex:1"><label class="fl">Cantidad</label><input class="fi" id="cart-cant" type="number" min="1" value="1"></div>
-      <div style="flex:1"><label class="fl">Precio ($ c/u)</label><input class="fi" id="cart-precio" type="number" min="0" step="0.01"></div>
+      <div style="flex:1"><label class="fl">Precio ($ c/u)</label><input class="fi" id="cart-precio" type="number" min="0" step="0.01" oninput="carritoPrecioMulti()"><div id="cart-precio-multi" style="font-size:10.5px;color:var(--gd);font-weight:700;margin-top:3px;min-height:12px"></div></div>
     </div>
     <button class="abtn abtn-gray abtn-sm" onclick="carritoAgregarProducto()" style="margin-top:8px"><i class="ti ti-plus"></i> Agregar al carrito</button>
     </div>
@@ -973,10 +973,14 @@ body.noche .ni.active::after{background:#a9abff}
     </select>
     <label class="fl">UND por talla (inventario actual)</label>
     <div id="nc-tallas-grid" style="background:var(--gray);border-radius:12px;padding:12px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:4px"></div>
+    <label class="fl">Código de barras por talla <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
+    <div id="nc-codigos" style="background:var(--gray);border-radius:12px;padding:8px 12px"></div>
     </div>
     <div id="nc-tallas-otro" style="display:none">
       <label class="fl">Unidades en inventario</label>
       <input class="fi" id="nc-U" type="number" min="0" value="0" style="text-align:center;font-size:18px;font-weight:700">
+      <label class="fl">Código de barras <span style="color:var(--txh);font-weight:600">(opcional)</span></label>
+      <input class="fi" id="nc-cod-U" type="text" placeholder="Ej: LIC-500">
     </div>
     <div style="font-size:12px;color:var(--txh);margin-bottom:4px">Total: <span id="nc-total" style="font-weight:700;color:var(--g)">0</span> UND</div>
 
@@ -1142,10 +1146,10 @@ if('serviceWorker' in navigator){
 
 let CONFIG={proveedor_1:'',proveedor_2:'',proveedor_3:'',proveedor_4:'',manager_bloqueado:'0'};
 function nombreRol(r=role){
-  if(r==='trabajador') return 'Trabajador';
+  if(r==='trabajador') return 'Caja';
   const nom=(r==='owner'?CONFIG.nombre_owner:CONFIG.nombre_manager)||'';
   if(nom.trim()) return nom.trim();
-  return r==='manager'?'Encargado':'Dueño';
+  return r==='manager'?'Encargado':'Gerente';
 }
 function nombreProv(n){
   const nom=(CONFIG['proveedor_'+n]||'').trim();
@@ -1181,7 +1185,7 @@ function detectarTipoTalla(tallas){
 }
 // Dibuja la grilla de tallas del tipo elegido, conservando valores si se pasan.
 let ncTallasActuales=[];
-function ncRenderTallas(valores){
+function ncRenderTallas(valores, codigos){
   const tt=document.getElementById('nc-tipotalla'); if(!tt) return;
   const tipo=tt.value||'letras';
   let tallas=(TIPOS_TALLA[tipo]||TIPOS_TALLA.letras).tallas.slice();
@@ -1199,6 +1203,11 @@ function ncRenderTallas(valores){
     return `<div><label style="display:block;font-size:11px;font-weight:700;color:var(--txm);text-align:center;margin-bottom:5px">${t}</label><input class="fi nc-talla-in" data-talla="${t}" type="number" min="0" value="${v}" style="text-align:center;padding:10px 4px;font-size:16px;font-weight:700" oninput="actualizarTotalNC()"></div>`;
   }).join('');
   actualizarTotalNC();
+  const cg=document.getElementById('nc-codigos');
+  if(cg){
+    const cods=codigos||{};
+    cg.innerHTML=tallas.map(t=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:12px;font-weight:700;color:var(--txm);min-width:40px;text-align:right">${t}</span><input class="fi nc-cod-in" data-talla="${t}" type="text" value="${String(cods[t]||'').replace(/"/g,'&quot;')}" placeholder="código de la talla ${t}" style="flex:1;font-size:13px;padding:8px 10px"></div>`).join('');
+  }
 }
 let catProducto='camiseta';
 function esCamiseta(c){ return !c.categoria || c.categoria==='camiseta'; }
@@ -2601,6 +2610,16 @@ function cardIndividual(c){
         </div>
       </div>`;
     }
+function tasaPesosValor(){ const t=tasasExtra().find(x=>x.moneda && String(x.nombre).toLowerCase().includes('peso')); return t?(parseFloat(String(t.valor).replace(',','.'))||0):0; }
+// Precio mostrado en $ · Bs · Pesos (solo las monedas con tasa configurada)
+function preciosMulti(precio){
+  if(precio==null || !(+precio>0)) return '';
+  const p=+precio, tb=tasaActual(), tp=tasaPesosValor();
+  const parts=[fmt(p)];
+  if(tb>0) parts.push(fmtBs(p*tb));
+  if(tp>0) parts.push(Math.round(p*tp).toLocaleString('es-CO')+' Ps');
+  return parts.join(' · ');
+}
 function matrizCard(nombre, grupo){
   let cols=ordenarTallas([...new Set(grupo.flatMap(c=>Object.keys(c.tallas||{}).filter(t=>t!=='U'&&(c.tallas[t]||0)>0)))]);
   if(!cols.length) cols=['S','M','L','XL','XXL'];
@@ -2615,7 +2634,7 @@ function matrizCard(nombre, grupo){
   return `<div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div><div style="font-size:17px;font-weight:800">${nombre}</div><div style="font-size:12px;color:var(--txm)">\ud83d\udc55 ${(grupo.find(x=>x.departamento)||{}).departamento||'Ropa'}${marca?' \u00b7 '+marca:''} \u00b7 ${grupo.length} color${grupo.length!==1?'es':''}</div></div>
-      <div style="text-align:right"><div style="font-size:21px;font-weight:800">${totalG} <span style="font-size:12px;font-weight:700;color:var(--txm)">UND</span></div></div>
+      <div style="text-align:right"><div style="font-size:21px;font-weight:800">${totalG} <span style="font-size:12px;font-weight:700;color:var(--txm)">UND</span></div>${(()=>{const pg=(grupo.find(c=>c.precio!=null)||{}).precio; return pg!=null?`<div style="font-size:11px;color:var(--gd);font-weight:700;margin-top:2px">${preciosMulti(pg)}</div>`:'';})()}</div>
     </div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
       <tr style="background:var(--gray)"><th style="text-align:left;padding:7px 10px;font-size:11px;color:var(--txm)">Color</th>${heads}<th style="text-align:right;padding:7px 10px;font-size:11px;color:var(--txm)">Total</th><th></th></tr>
@@ -2736,12 +2755,14 @@ async function importarArchivo(input){
       const talla=String(r[4]==null?'':r[4]).trim().toUpperCase();
       const codigo=String(r[5]==null?'':r[5]).trim();
       const cant=impEntero(r[6]);
-      const p1=impNumero(r[7]), p2=impNumero(r[8]);
+      const costo=impNumero(r[7]);
+      const p1=impNumero(r[8]), p2=impNumero(r[9]);
       const key=[nombre.toLowerCase(),color.toLowerCase(),marca.toLowerCase(),depto.toLowerCase()].join('|');
-      if(!grupos[key]) grupos[key]={equipo:nombre,departamento:depto,color,marca,tallas:{},codigos:{},precio:null,precio2:null};
+      if(!grupos[key]) grupos[key]={equipo:nombre,departamento:depto,color,marca,tallas:{},codigos:{},precio:null,precio2:null,precioCosto:null};
       const g=grupos[key];
       if(g.precio==null && p1!=null) g.precio=p1;
       if(g.precio2==null && p2!=null) g.precio2=p2;
+      if(g.precioCosto==null && costo!=null) g.precioCosto=costo;
       if(talla){ g.tallas[talla]=(g.tallas[talla]||0)+cant; if(codigo) g.codigos[talla]=codigo; }
       else { g.tallas['U']=(g.tallas['U']||0)+cant; if(codigo) g.codigos['U']=codigo; }
     });
@@ -2758,6 +2779,7 @@ async function importarArchivo(input){
         temporada: g.marca||'—',
         tallas,
         precio:g.precio, precio2:g.precio2,
+        precio_costo:g.precioCosto,
         codigos,
         min:5, prov:1,
       };
@@ -2858,6 +2880,7 @@ function abrirNuevaCamiseta(){
   document.getElementById('nc-precio').value='';
   document.getElementById('nc-precio2').value='';
   {const _c=document.getElementById('nc-costo'); if(_c)_c.value='';}
+  {const _cu=document.getElementById('nc-cod-U'); if(_cu)_cu.value='';}
   ncMargen();
   document.getElementById('nc-id').value='';
   document.getElementById('nc-btn-borrar').style.display='none';
@@ -2900,8 +2923,9 @@ function editarCamiseta(id){
   document.getElementById('nc-id').value=c.id;
   document.getElementById('nc-btn-borrar').style.display='flex';
   {const _tt=document.getElementById('nc-tipotalla'); if(_tt)_tt.value=detectarTipoTalla(c.tallas);}
-  ncRenderTallas(c.tallas);
+  ncRenderTallas(c.tallas, c.codigos||{});
   {const _u=document.getElementById('nc-U'); if(_u)_u.value=c.tallas['U']||0;}
+  {const _cu=document.getElementById('nc-cod-U'); if(_cu)_cu.value=((c.codigos||{})['U']||'');}
   // Tipo y proveedor
   const selTipo=document.getElementById('nc-tipo');
   for(let o of selTipo.options) if(o.text===c.tipo){o.selected=true;break}
@@ -2925,6 +2949,9 @@ async function saveNuevaCamiseta(seguir=false){
   if(esOtro){ tallas['U']=+document.getElementById('nc-U').value||0; }
   else { document.querySelectorAll('#nc-tallas-grid .nc-talla-in').forEach(el=>{ tallas[el.dataset.talla]=+el.value||0; }); }
   if(Object.values(tallas).some(v=>v<0)){toast('⚠️ Las cantidades no pueden ser negativas');return}
+  const codigos={};
+  if(esOtro){ const cu=(document.getElementById('nc-cod-U')||{}).value; if(cu&&cu.trim()) codigos['U']=cu.trim(); }
+  else { document.querySelectorAll('#nc-codigos .nc-cod-in').forEach(el=>{ const v=(el.value||'').trim(); if(v) codigos[el.dataset.talla]=v; }); }
   if(+document.getElementById('nc-min').value<0){toast('⚠️ El stock mínimo no puede ser negativo');return}
   if(document.getElementById('nc-precio').value!==''&&+document.getElementById('nc-precio').value<0){toast('⚠️ El precio no puede ser negativo');return}
   const precioVal=document.getElementById('nc-precio').value;
@@ -2938,6 +2965,7 @@ async function saveNuevaCamiseta(seguir=false){
     temp:(document.getElementById('nc-marca').value.trim()||'—'),
     tipo:'Otro',
     tallas,
+    codigos,
     min:+document.getElementById('nc-min').value||5,
     prov:+document.getElementById('nc-prov').value||1,
     precio:precioVal!==''?+precioVal:null,
@@ -2945,7 +2973,7 @@ async function saveNuevaCamiseta(seguir=false){
     precio_costo:costoVal!==''?+costoVal:null,
   };
   const editId=+document.getElementById('nc-id').value;
-  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,precio_costo:data.precio_costo,color:data.color,departamento:data.departamento};
+  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,precio_costo:data.precio_costo,color:data.color,departamento:data.departamento,codigos:data.codigos};
   if(editId){
     // Editar — optimista: aplica local, cierra y muestra al instante; sincroniza por detrás
     const i=camisetas.findIndex(c=>c.id===editId);
@@ -3204,6 +3232,16 @@ function carritoTogglePrecio2(){ carritoPrecio2=!carritoPrecio2; carritoP2UI(); 
 function carritoAutoPrecio(){
   const c=camisetas.find(x=>x.id===+document.getElementById('cart-cam').value);
   if(c){ const pp=(carritoPrecio2&&c.precio2!=null)?+c.precio2:(c.precio!=null?+c.precio:null); if(pp!=null) document.getElementById('cart-precio').value=pp.toFixed(2); }
+  carritoPrecioMulti();
+}
+function carritoPrecioMulti(){
+  const el=document.getElementById('cart-precio-multi'); if(!el) return;
+  const p=+((document.getElementById('cart-precio')||{}).value)||0;
+  if(!(p>0)){ el.textContent=''; return; }
+  const tb=tasaActual(), tp=tasaPesosValor(); const parts=[];
+  if(tb>0) parts.push(fmtBs(p*tb));
+  if(tp>0) parts.push(Math.round(p*tp).toLocaleString('es-CO')+' Ps');
+  el.textContent = parts.length?('\u2248 '+parts.join(' \u00b7 ')):'';
 }
 function carritoEnCarrito(camId,talla){ return carrito.filter(it=>it.camId===camId&&it.talla===talla).reduce((a,it)=>a+it.cant,0); }
 function carritoAgregarProducto(){
