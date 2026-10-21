@@ -929,6 +929,29 @@ body.noche .ni.active::after{background:#a9abff}
   </div>
 </div>
 
+<!-- MODAL: AGREGAR INVENTARIO (SUMAR STOCK) -->
+<div class="mbg" id="m-entrada">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="mtitle"><span>Agregar inventario</span><button class="mclose" onclick="closeM('m-entrada')"><i class="ti ti-x"></i></button></div>
+    <p style="font-size:13px;color:var(--txm);margin-bottom:12px">Escribe cuántas unidades <b>nuevas</b> llegaron. Se <b>suman</b> al stock actual (no lo reemplazan).</p>
+    <label class="fl" style="margin-top:0">Producto / color</label>
+    <div style="position:relative">
+      <input class="fi" id="ent-search" placeholder="Busca por nombre, color o escanea el código…" autocomplete="off" oninput="entradaBuscar()" onkeydown="if(event.key==='Enter'){event.preventDefault();entradaCodigo(this.value)}" style="margin:0">
+      <div id="ent-list" style="display:none;margin-top:4px;border:1.5px solid var(--grayb);border-radius:12px;overflow:hidden;max-height:230px;overflow-y:auto"></div>
+    </div>
+    <input type="hidden" id="ent-camid">
+    <div id="ent-detalle" style="display:none;margin-top:14px">
+      <div id="ent-nombre" style="font-size:14px;font-weight:800;margin-bottom:3px"></div>
+      <div id="ent-ubic" style="font-size:12px;color:var(--txm);margin-bottom:12px"></div>
+      <label class="fl" style="margin-top:0">¿Cuántas llegaron por talla?</label>
+      <div id="ent-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px"></div>
+      <div style="font-size:12px;color:var(--txh);margin-top:10px">Total a agregar: <span id="ent-total" style="font-weight:800;color:var(--g)">0</span> UND</div>
+      <button class="abtn abtn-g" onclick="entradaGuardar()"><i class="ti ti-plus"></i> Agregar al stock</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: NUEVA CAMISETA EN INVENTARIO -->
 <div class="mbg" id="m-nueva-cam">
   <div class="modal">
@@ -958,6 +981,9 @@ body.noche .ni.active::after{background:#a9abff}
       <label class="fl">Departamento</label>
       <select class="fi" id="nc-depto-ropa"><option>Ropa escolar</option><option>Ropa general</option></select>
     </div>
+
+    <label class="fl">Ubicación <span style="color:var(--txh);font-weight:600">(¿dónde está?)</span></label>
+    <select class="fi" id="nc-ubicacion"><option>Almacén</option><option>Depósito</option></select>
 
     <div class="frow" id="nc-camposcam" style="display:none">
       <div>
@@ -2590,6 +2616,7 @@ async function enviarPedido(){
 
 // ── STOCK (encargado) ─────────────────────────────────────────────────────────
 let stkQuery='';
+let stkUbic='';
 function normalizarTxt(s){ return (s==null?'':String(s)).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 function filtrarCamisetas(q){
   if(!q||!q.trim()) return camisetas;
@@ -2618,6 +2645,9 @@ function limpiarBusquedaStock(){
   stkQuery='';
   renderStock();
 }
+function setStkUbic(u){ stkUbic=u; renderStock(); }
+function ubicDe(c){ return (c&&c.ubicacion==='Depósito')?'Depósito':'Almacén'; }
+function ubChip(c){ const dep=ubicDe(c)==='Depósito'; return `<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:999px;margin-left:6px;white-space:nowrap;${dep?'background:#fef3c7;color:#92400e':'background:var(--gl);color:var(--gd)'}">${dep?'🏬 Depósito':'🏪 Almacén'}</span>`; }
 function cardIndividual(c){
       const s=stockStatus(c);
       const clr=s==='ok'?'var(--g)':s==='bajo'?'var(--a)':'var(--r)';
@@ -2629,7 +2659,7 @@ function cardIndividual(c){
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
           <div>
             <div style="font-size:17px;font-weight:800">${nombreProducto(c)}</div>
-            <div style="font-size:12px;color:var(--txm)">${esCamiseta(c)?`👕 ${c.departamento||'Ropa'}${c.temp&&c.temp!=='—'?' · '+c.temp:''}`:`📦 ${c.categoria}${c.temp&&c.temp!=='—'?' · '+c.temp:''}`} · ${nombreProv(c.prov)}</div>
+            <div style="font-size:12px;color:var(--txm)">${esCamiseta(c)?`👕 ${c.departamento||'Ropa'}${c.temp&&c.temp!=='—'?' · '+c.temp:''}`:`📦 ${c.categoria}${c.temp&&c.temp!=='—'?' · '+c.temp:''}`} · ${nombreProv(c.prov)} ${ubChip(c)}</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:21px;font-weight:800;color:${clr}">${total} <span style="font-size:12px;font-weight:700;color:${clr};opacity:.7">UND</span></div>
@@ -2668,7 +2698,7 @@ function matrizCard(nombre, grupo){
   const filas=grupo.map(c=>{
     const tot=Object.values(c.tallas).reduce((a,b)=>a+b,0);
     const cells=cols.map(t=>{const v=c.tallas[t]||0;return `<td style="text-align:center;padding:9px 4px;font-weight:700;color:${v===0?'var(--r)':v<c.min?'var(--a)':'var(--tx)'}">${v}</td>`}).join('');
-    return `<tr onclick="editarCamiseta(${c.id})" style="cursor:pointer;border-top:1px solid var(--gray)"><td style="padding:9px 10px;font-weight:700;white-space:nowrap">${c.color||'\u2014'}</td>${cells}<td style="text-align:right;padding:9px 10px;font-weight:800;color:var(--g)">${tot}</td><td style="text-align:right;padding:9px 10px;white-space:nowrap"><span style="color:var(--gd);background:var(--gl);font-size:11px;font-weight:800;padding:4px 9px;border-radius:7px"><i class="ti ti-pencil" style="font-size:12px"></i> Editar</span></td></tr>`;
+    return `<tr onclick="editarCamiseta(${c.id})" style="cursor:pointer;border-top:1px solid var(--gray)"><td style="padding:9px 10px;font-weight:700;white-space:nowrap">${c.color||'\u2014'}${ubChip(c)}</td>${cells}<td style="text-align:right;padding:9px 10px;font-weight:800;color:var(--g)">${tot}</td><td style="text-align:right;padding:9px 10px;white-space:nowrap"><span style="color:var(--gd);background:var(--gl);font-size:11px;font-weight:800;padding:4px 9px;border-radius:7px"><i class="ti ti-pencil" style="font-size:12px"></i> Editar</span></td></tr>`;
   }).join('');
   return `<div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -2884,17 +2914,19 @@ async function confirmarImportar(){
 function renderStock(){
   const cont=document.getElementById('stk-c');
   const criticos=camisetas.filter(c=>stockStatus(c)==='critico');
-  const totalInv=camisetas.reduce((sm,c)=>sm+Object.values(c.tallas).reduce((a,b)=>a+b,0),0);
+  const ubLista=stkUbic?camisetas.filter(c=>ubicDe(c)===stkUbic):camisetas;
+  const totalInv=ubLista.reduce((sm,c)=>sm+Object.values(c.tallas).reduce((a,b)=>a+b,0),0);
   cont.innerHTML=`
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div>
-        <div style="font-size:11px;color:var(--txm);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Total en inventario</div>
+        <div style="font-size:11px;color:var(--txm);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Total ${stkUbic?("en "+stkUbic):"en inventario"}</div>
         <div style="font-size:24px;font-weight:800">${totalInv} <span style="font-size:13px;font-weight:700;color:var(--txm)">unidades</span></div>
       </div>
-      <div style="text-align:right;font-size:13px;color:var(--txm);font-weight:700">${camisetas.length} modelo${camisetas.length!==1?'s':''}</div>
+      <div style="text-align:right;font-size:13px;color:var(--txm);font-weight:700">${ubLista.length} modelo${ubLista.length!==1?'s':''}</div>
     </div>
     ${criticos.length?`<div class="abox abox-r" style="margin-bottom:12px"><i class="ti ti-alert-triangle"></i><div><div class="abox-title">Stock crítico — reponer urgente</div><div class="abox-sub">${criticos.map(c=>nombreProducto(c)).join(' · ')}</div></div></div>`:''}
     <button class="abtn abtn-g" onclick="abrirScannerInventario()" style="margin-top:0;margin-bottom:9px"><i class="ti ti-scan"></i> Escanear mercancía (entrada de stock)</button>
+    <button class="abtn abtn-gray" onclick="abrirEntradaStock()" style="margin-top:0;margin-bottom:9px"><i class="ti ti-plus"></i> Agregar inventario a mano (sumar stock)</button>
     ${role==='owner'?`<button class="abtn abtn-gray" onclick="abrirImportar()" style="margin-top:0;margin-bottom:9px"><i class="ti ti-file-spreadsheet"></i> Importar inventario desde Excel</button>`:''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px">
       <button class="abtn abtn-gray abtn-sm" onclick="abrirNuevaCamiseta()" style="margin-top:0"><i class="ti ti-plus"></i> Nuevo producto</button>
@@ -2905,8 +2937,9 @@ function renderStock(){
       <input class="fi" id="stk-search" placeholder="Buscar: nombre, color, marca o código…" oninput="filtrarStock()" onkeydown="if(event.key==='Enter'){event.preventDefault();stockCodigoManual(this.value)}" style="padding-left:38px;margin:0" value="${stkQuery.replace(/"/g,'&quot;')}">
       ${stkQuery?`<button onclick="limpiarBusquedaStock()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--txh);font-size:18px"><i class="ti ti-x"></i></button>`:''}
     </div>
+    <div style="display:flex;gap:7px;margin-bottom:12px">${['','Almacén','Depósito'].map(u=>{const on=stkUbic===u;const lbl=u===''?'Todos':u;return `<button onclick="setStkUbic('${u}')" style="flex:1;padding:8px;border-radius:9px;border:2px solid ${on?'var(--g)':'var(--grayb)'};background:${on?'var(--gl)':'var(--card)'};color:${on?'var(--gd)':'var(--txm)'};font-weight:800;font-size:12px;cursor:pointer">${lbl}</button>`}).join('')}</div>
     ${camisetas.length===0?`<div class="empty"><i class="ti ti-box"></i><p>Sin productos en inventario.<br>Pulsa "Nuevo producto" para empezar.</p></div>`:''}
-    ${(()=>{const lista=filtrarCamisetas(stkQuery);return lista.length===0&&camisetas.length>0?`<div class="empty"><i class="ti ti-search-off"></i><p>Nada coincide con "${stkQuery}"</p></div>`:(stkQuery.trim()?`<div style="font-size:12px;color:var(--txm);font-weight:700;margin-bottom:8px">${lista.length} resultado${lista.length!==1?'s':''}</div>`:'')+'<div class="stock-grid">'+construirStockHTML(lista)+'</div>'})()}`;
+    ${(()=>{let lista=filtrarCamisetas(stkQuery);if(stkUbic)lista=lista.filter(c=>ubicDe(c)===stkUbic);return lista.length===0&&camisetas.length>0?`<div class="empty"><i class="ti ti-search-off"></i><p>Nada coincide con "${stkQuery}"</p></div>`:(stkQuery.trim()?`<div style="font-size:12px;color:var(--txm);font-weight:700;margin-bottom:8px">${lista.length} resultado${lista.length!==1?'s':''}</div>`:'')+'<div class="stock-grid">'+construirStockHTML(lista)+'</div>'})()}`;
 }
 function abrirNuevaCamiseta(){
   document.getElementById('ncam-title').textContent='Nuevo producto';
@@ -2918,6 +2951,7 @@ function abrirNuevaCamiseta(){
   document.getElementById('nc-color').value='';
   {const _tp=document.getElementById('nc-tipoprenda'); if(_tp)_tp.value='';}
   {const _d=document.getElementById('nc-depto-ropa'); if(_d)_d.selectedIndex=0;}
+  {const _u2=document.getElementById('nc-ubicacion'); if(_u2)_u2.selectedIndex=0;}
   document.getElementById('nc-min').value='5';
   document.getElementById('nc-precio').value='';
   document.getElementById('nc-precio2').value='';
@@ -2959,6 +2993,7 @@ function editarCamiseta(id){
   document.getElementById('nc-color').value=c.color||'';
   {const _tp=document.getElementById('nc-tipoprenda'); if(_tp)_tp.value=c.tipo_prenda||'';}
   {const _d=document.getElementById('nc-depto-ropa'); if(_d)_d.value=(c.departamento==='Ropa general')?'Ropa general':'Ropa escolar';}
+  {const _u2=document.getElementById('nc-ubicacion'); if(_u2)_u2.value=(c.ubicacion==='Depósito')?'Depósito':'Almacén';}
   document.getElementById('nc-min').value=c.min;
   document.getElementById('nc-precio').value=c.precio!=null?c.precio:'';
   document.getElementById('nc-precio2').value=c.precio2!=null?c.precio2:'';
@@ -3007,6 +3042,7 @@ async function saveNuevaCamiseta(seguir=false){
     color,
     tipo_prenda:tipoPrenda,
     departamento: esOtro ? categoria : ((document.getElementById('nc-depto-ropa')||{}).value||'Ropa'),
+    ubicacion:(document.getElementById('nc-ubicacion')||{}).value||'Almacén',
     temp:(document.getElementById('nc-marca').value.trim()||'—'),
     tipo:'Otro',
     tallas,
@@ -3019,7 +3055,7 @@ async function saveNuevaCamiseta(seguir=false){
   };
   {const m=(data.temp||'').trim(); if(m&&m!=='\u2014'){ let arr=[]; try{arr=JSON.parse(CONFIG.marcas||'[]');}catch(e){} if(!arr.some(x=>String(x).toLowerCase()===m.toLowerCase())){ arr.push(m); const j=JSON.stringify(arr); CONFIG.marcas=j; if(MODO_SERVIDOR) apiCall('POST','/config',{marcas:j}).catch(()=>{}); } }}
   const editId=+document.getElementById('nc-id').value;
-  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,precio_costo:data.precio_costo,color:data.color,tipo_prenda:data.tipo_prenda,departamento:data.departamento,codigos:data.codigos};
+  const payload={equipo:data.equipo,categoria:data.categoria,temporada:data.temp,tipo:data.tipo,tallas:data.tallas,stock_minimo:data.min,proveedor_id:data.prov,precio:data.precio,precio2:data.precio2,precio_costo:data.precio_costo,color:data.color,tipo_prenda:data.tipo_prenda,departamento:data.departamento,ubicacion:data.ubicacion,codigos:data.codigos};
   if(editId){
     // Editar — optimista: aplica local, cierra y muestra al instante; sincroniza por detrás
     const i=camisetas.findIndex(c=>c.id===editId);
@@ -3105,6 +3141,79 @@ async function saveAjuste(){
   if(i>=0){ camisetas[i].tallas=nuevo; }
   if(!MODO_SERVIDOR) sd('camisetas',camisetas); await syncCamisetas('stock',nuevo,id); const camUpd=camisetas.find(c=>c.id===id); if(camUpd) registrarActividad('stock',`Stock ajustado: ${camUpd.equipo} ${camUpd.tipo}`,`${camUpd.temp}`);
   closeM('m-ajuste');toast('Stock actualizado ✓');renderStock();
+}
+
+// ── AGREGAR INVENTARIO A MANO (suma al stock, gemelo del escáner) ────────
+function abrirEntradaStock(){
+  if(!MODO_SERVIDOR){ toast('Agregar inventario requiere conexión con el servidor'); return; }
+  document.getElementById('ent-search').value='';
+  document.getElementById('ent-camid').value='';
+  const l=document.getElementById('ent-list'); if(l){ l.style.display='none'; l.innerHTML=''; }
+  document.getElementById('ent-detalle').style.display='none';
+  openM('m-entrada');
+  setTimeout(()=>{ const i=document.getElementById('ent-search'); if(i)i.focus(); },150);
+}
+function entradaBuscar(){
+  const inp=document.getElementById('ent-search'), list=document.getElementById('ent-list');
+  if(!inp||!list) return;
+  if(!inp.value.trim()){ list.style.display='none'; list.innerHTML=''; return; }
+  const res=filtrarCamisetas(inp.value).slice(0,10);
+  if(!res.length){ list.innerHTML='<div style="padding:10px 12px;font-size:13px;color:var(--txm)">Sin resultados</div>'; list.style.display='block'; return; }
+  list.innerHTML=res.map(c=>{
+    const tot=Object.values(c.tallas||{}).reduce((a,b)=>a+(+b||0),0);
+    return `<div onmousedown="entradaSelCam(${c.id})" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--gray);display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:13.5px;font-weight:600">${nombreProducto(c)}</span><span style="font-size:11px;font-weight:800;color:var(--txm);white-space:nowrap">${tot} UND</span></div>`;
+  }).join('');
+  list.style.display='block';
+}
+async function entradaCodigo(q){
+  q=(q||'').trim(); if(q.length<2) return;
+  if(camisetas.some(c=>String(nombreProducto(c)).toLowerCase().includes(q.toLowerCase()))) return; // parece nombre, no código
+  if(!MODO_SERVIDOR){ toast('La búsqueda por código requiere servidor'); return; }
+  try{
+    const r=await buscarCodigo(q);
+    if(r&&r.encontrado&&r.camiseta){ const c=camisetas.find(x=>x.id===r.camiseta.id); if(c){ entradaSelCam(c.id, r.talla); } else { toast('Ese código no está en la lista actual'); } }
+    else toast('Código no registrado');
+  }catch(e){ toast('No se pudo buscar el código'); }
+}
+function entradaSelCam(id, foco){
+  const c=camisetas.find(x=>x.id===id); if(!c) return;
+  document.getElementById('ent-camid').value=String(id);
+  document.getElementById('ent-search').value=nombreProducto(c);
+  const list=document.getElementById('ent-list'); if(list){ list.style.display='none'; list.innerHTML=''; }
+  document.getElementById('ent-nombre').textContent=nombreProducto(c);
+  document.getElementById('ent-ubic').textContent='📍 '+ubicDe(c);
+  const tallas=tallasDe(c);
+  document.getElementById('ent-grid').innerHTML=tallas.map(t=>{
+    const v=c.tallas[t]||0;
+    return `<div><label class="fl" style="margin-top:0;text-align:center;line-height:1.2">${t==='U'?'Única':t}<br><span style="font-weight:600;color:var(--txh);font-size:10px">hay ${v}</span></label><input class="fi ent-in" data-talla="${t}" type="number" min="0" value="0" oninput="entradaTotal()" style="text-align:center;padding:10px 6px"></div>`;
+  }).join('');
+  document.getElementById('ent-total').textContent='0';
+  document.getElementById('ent-detalle').style.display='block';
+  if(foco){ const el=document.querySelector(`#ent-grid .ent-in[data-talla="${foco}"]`); if(el){ el.focus(); el.select(); } }
+}
+function entradaTotal(){
+  const t=[...document.querySelectorAll('#ent-grid .ent-in')].reduce((s,el)=>s+(+el.value||0),0);
+  const el=document.getElementById('ent-total'); if(el) el.textContent=t;
+}
+async function entradaGuardar(){
+  const id=+document.getElementById('ent-camid').value;
+  const i=camisetas.findIndex(c=>c.id===id);
+  if(i<0){ toast('Elige un producto primero'); return; }
+  const add={}; let total=0;
+  document.querySelectorAll('#ent-grid .ent-in').forEach(el=>{ const n=Math.max(0,+el.value||0); if(n>0){ add[el.dataset.talla]=n; total+=n; } });
+  if(total<1){ toast('Escribe cuántas unidades llegaron'); return; }
+  const prev=camisetas[i].tallas;
+  const merged={...prev};
+  Object.keys(add).forEach(t=>{ merged[t]=(merged[t]||0)+add[t]; });
+  camisetas[i].tallas=merged; // optimista
+  try{
+    await syncCamisetas('stock', merged, id);
+  }catch(e){ camisetas[i].tallas=prev; toast('No se pudo guardar la entrada'); return; }
+  const det=Object.entries(add).map(([t,n])=>`${t}+${n}`).join(' ');
+  registrarActividad('stock',`Entrada manual: ${camisetas[i].equipo} ${camisetas[i].tipo}`,`+${total} UND (${det})`);
+  closeM('m-entrada');
+  toast(`✓ +${total} UND a ${nombreProducto(camisetas[i])}`);
+  if(curPage==='stock'){ stkQuery=''; renderStock(); }
 }
 function pedirEste(id){
   const c=camisetas.find(x=>x.id===id);
