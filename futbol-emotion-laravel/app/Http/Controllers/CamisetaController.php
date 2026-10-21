@@ -57,6 +57,7 @@ class CamisetaController extends Controller
             'color'        => 'nullable|string|max:40',
             'departamento' => 'nullable|string|max:40',
             'tipo_prenda'  => 'nullable|string|max:40',
+            'ubicacion'    => 'nullable|string|max:20',
         ]);
 
         $tallas = $request->input('tallas', []);
@@ -86,6 +87,7 @@ class CamisetaController extends Controller
             'color'         => $request->input('color'),
             'departamento'  => $request->input('departamento'),
             'tipo_prenda'   => $request->input('tipo_prenda'),
+            'ubicacion'     => $request->input('ubicacion', 'Almacén'),
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);
@@ -131,6 +133,7 @@ class CamisetaController extends Controller
             'color'        => $request->input('color', $camiseta->color),
             'departamento' => $request->input('departamento', $camiseta->departamento),
             'tipo_prenda'  => $request->input('tipo_prenda', $camiseta->tipo_prenda),
+            'ubicacion'    => $request->input('ubicacion', $camiseta->ubicacion),
             'updated_at'   => now(),
         ]);
 
@@ -315,6 +318,7 @@ class CamisetaController extends Controller
                         'color'        => $color,
                         'departamento' => $departamento,
                         'tipo_prenda'  => $tipoPrenda,
+                        'ubicacion'    => 'Almacén',
                         'tallas_json'  => json_encode($tallas, JSON_UNESCAPED_UNICODE),
                         'stock_minimo' => $min,
                         'proveedor_id' => $prov,
@@ -361,6 +365,7 @@ class CamisetaController extends Controller
             'color' => $c->color ?? null,
             'departamento' => $c->departamento ?? null,
             'tipo_prenda' => $c->tipo_prenda ?? null,
+            'ubicacion' => $c->ubicacion ?? 'Almacén',
         ];
     }
 }
