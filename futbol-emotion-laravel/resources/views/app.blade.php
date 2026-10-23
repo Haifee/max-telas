@@ -484,7 +484,7 @@ body.noche .ni.active::after{background:#a9abff}
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="mtitle">Calculadora <button class="mclose" onclick="closeM('m-calcgen')"><i class="ti ti-x"></i></button></div>
-    <div id="calc-display" style="background:var(--tx);color:#fff;border-radius:14px;padding:18px 16px;text-align:right;font-size:30px;font-weight:800;min-height:34px;word-break:break-all;line-height:1.15">0</div>
+    <div id="calc-display" style="background:var(--tx);color:var(--bg);border-radius:14px;padding:18px 16px;text-align:right;font-size:30px;font-weight:800;min-height:34px;word-break:break-all;line-height:1.15">0</div>
     <div id="calc-keys" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px"></div>
     <div style="font-size:12px;color:var(--txm);margin-top:12px;text-align:center">Solo para hacer cuentas. No registra ninguna venta.</div>
   </div>
