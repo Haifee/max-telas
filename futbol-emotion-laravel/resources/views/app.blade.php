@@ -480,7 +480,7 @@ body.noche .ni.active::after{background:#a9abff}
 </div>
 
 <!-- MODAL: CALCULADORA (general) -->
-<div class="mbg" id="m-calcgen">
+<div class="mbg" id="m-calcgen" style="z-index:1000">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="mtitle">Calculadora <button class="mclose" onclick="closeM('m-calcgen')"><i class="ti ti-x"></i></button></div>
@@ -626,7 +626,7 @@ body.noche .ni.active::after{background:#a9abff}
 <div class="mbg" id="m-carrito">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="mtitle"><button class="cart-volver" onclick="closeM('m-carrito')"><i class="ti ti-arrow-left"></i> Volver</button><span class="cart-title-txt">Venta con varios productos</span> <button class="mclose" onclick="closeM('m-carrito')"><i class="ti ti-x"></i></button></div>
+    <div class="mtitle"><button class="cart-volver" onclick="closeM('m-carrito')"><i class="ti ti-arrow-left"></i> Volver</button><span class="cart-title-txt">Venta con varios productos</span> <button class="mclose" onclick="abrirCalc()" title="Calculadora"><i class="ti ti-calculator"></i></button> <button class="mclose" onclick="closeM('m-carrito')"><i class="ti ti-x"></i></button></div>
     <div class="cart-kpis" id="cart-kpis">
       <div class="mc mc-b"><div class="mcl">Productos</div><div class="mcv" id="cart-kpi-items">0</div><i class="ti ti-shopping-bag mc-ico"></i></div>
       <div class="mc mc-g"><div class="mcl">Total carrito</div><div class="mcv" id="cart-kpi-total">$0.00</div><i class="ti ti-cash mc-ico"></i></div>
@@ -5976,11 +5976,8 @@ function renderMisVentas(){
     ${cardsMonedaHoy()}
 
     <!-- BOTÓN NUEVA VENTA (todo por carrito) -->
-    <button class="abtn abtn-g" onclick="abrirCarrito()" style="margin-top:0;margin-bottom:10px">
+    <button class="abtn abtn-g" onclick="abrirCarrito()" style="margin-top:0;margin-bottom:16px">
       <i class="ti ti-plus"></i> Registrar venta
-    </button>
-    <button class="abtn abtn-gray" onclick="abrirCalc()" style="margin-top:0;margin-bottom:16px">
-      <i class="ti ti-calculator"></i> Calculadora
     </button>
 
     <!-- FÍSICAS -->
