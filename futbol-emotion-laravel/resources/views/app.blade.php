@@ -626,7 +626,7 @@ body.noche .ni.active::after{background:#a9abff}
 <div class="mbg" id="m-carrito">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="mtitle"><button class="cart-volver" onclick="closeM('m-carrito')"><i class="ti ti-arrow-left"></i> Volver</button><span class="cart-title-txt">Venta con varios productos</span> <button class="mclose" onclick="abrirCalc()" title="Calculadora"><i class="ti ti-calculator"></i></button> <button class="mclose" onclick="closeM('m-carrito')"><i class="ti ti-x"></i></button></div>
+    <div class="mtitle"><button class="cart-volver" onclick="closeM('m-carrito')"><i class="ti ti-arrow-left"></i> Volver</button><span class="cart-title-txt">Venta con varios productos</span> <button onclick="abrirCalc()" title="Calculadora" style="margin-left:auto;background:var(--gray);border:none;color:var(--gd);cursor:pointer;font-size:20px;display:flex;align-items:center;padding:8px 10px;border-radius:10px"><i class="ti ti-calculator"></i></button> <button class="mclose" onclick="closeM('m-carrito')"><i class="ti ti-x"></i></button></div>
     <div class="cart-kpis" id="cart-kpis">
       <div class="mc mc-b"><div class="mcl">Productos</div><div class="mcv" id="cart-kpi-items">0</div><i class="ti ti-shopping-bag mc-ico"></i></div>
       <div class="mc mc-g"><div class="mcl">Total carrito</div><div class="mcv" id="cart-kpi-total">$0.00</div><i class="ti ti-cash mc-ico"></i></div>
