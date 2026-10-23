@@ -5976,8 +5976,11 @@ function renderMisVentas(){
     ${cardsMonedaHoy()}
 
     <!-- BOTÓN NUEVA VENTA (todo por carrito) -->
-    <button class="abtn abtn-g" onclick="abrirCarrito()" style="margin-top:0;margin-bottom:16px">
+    <button class="abtn abtn-g" onclick="abrirCarrito()" style="margin-top:0;margin-bottom:10px">
       <i class="ti ti-plus"></i> Registrar venta
+    </button>
+    <button class="abtn abtn-gray" onclick="abrirCalc()" style="margin-top:0;margin-bottom:16px">
+      <i class="ti ti-calculator"></i> Calculadora
     </button>
 
     <!-- FÍSICAS -->
