@@ -4616,6 +4616,26 @@ function renderCaja(){
       </div>`;
   }
 
+  function bloqueCompacto(titulo,icono,color,data,periodo,clave){
+    const nv=data.vFis.length+data.vOnl.length;
+    return `
+      <div class="card" style="border-left:4px solid ${color};margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <div style="width:32px;height:32px;border-radius:9px;background:${color}22;display:flex;align-items:center;justify-content:center;font-size:17px;color:${color}"><i class="ti ${icono}"></i></div>
+            <div><div style="font-size:15px;font-weight:800">${titulo}</div><div style="font-size:11px;color:var(--txm)">${periodo}</div></div>
+          </div>
+          <button onclick="abrirExport('${clave}')" style="background:var(--gray);border:none;border-radius:9px;padding:6px 10px;cursor:pointer;font-size:12px;font-weight:700;color:var(--txm);display:${role==='owner'?'flex':'none'};align-items:center;gap:5px"><i class="ti ti-download" style="font-size:14px"></i> Exportar</button>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px">
+          <div><span style="color:var(--txm)">Ingresos</span> <b style="color:var(--g)">${fmt(data.ing)}</b></div>
+          <div><span style="color:var(--txm)">Gastos</span> <b style="color:var(--r)">${fmt(data.gas)}</b></div>
+          <div><span style="color:var(--txm)">Beneficio</span> <b style="color:var(--p)">${fmt(data.neto)}</b></div>
+          <div><span style="color:var(--txm)">Ventas</span> <b>${nv}</b></div>
+        </div>
+      </div>`;
+  }
+
   cont.innerHTML=`
     <div style="font-size:19px;font-weight:800;margin-bottom:4px">Cierre de caja</div>
     <div style="font-size:13px;color:var(--txm);margin-bottom:14px">Hoy: ${hoyStr}</div>
@@ -4636,8 +4656,8 @@ function renderCaja(){
     <button class="abtn abtn-gray" onclick="abrirCalcBs()" style="margin-bottom:18px"><i class="ti ti-calculator"></i> Calculadora de bolívares</button>
     ${(role==='owner'&&!historialCompleto)?`<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;background:var(--gl)"><div style="font-size:12.5px;color:var(--txm);line-height:1.4"><i class="ti ti-clock-hour-4"></i> Mostrando los últimos ${MESES_CARGA_INICIAL} meses. Los reportes de meses viejos se cargan solos al exportar.</div><button onclick="cargarHistorialCompletoUI()" style="flex:none;background:#334155;color:#fff;border:none;border-radius:9px;padding:8px 12px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap">Cargar todo</button></div>`:''}
     ${bloqueResumen('Cierre del día','ti-sun','var(--g)',dia,hoyStr,'dia')}
-    ${bloqueResumen('Cierre de la semana','ti-calendar-week','var(--b)',sem,`${inicioSemStr} → ${hoyStr}`,'sem')}
-    ${bloqueResumen('Cierre del mes','ti-calendar-month','var(--p)',mes,inicioMesStr.slice(0,7),'mes')}
+    ${bloqueCompacto('Cierre de la semana','ti-calendar-week','var(--b)',sem,`${inicioSemStr} → ${hoyStr}`,'sem')}
+    ${bloqueCompacto('Cierre del mes','ti-calendar-month','var(--p)',mes,inicioMesStr.slice(0,7),'mes')}
     <div class="stitle">Movimientos recientes</div>
     <div class="card">
       ${[...transacciones].sort((a,b)=>(b.fecha+String(b.id).padStart(9,'0')).localeCompare(a.fecha+String(a.id).padStart(9,'0'))).slice(0,12).map(t=>`
