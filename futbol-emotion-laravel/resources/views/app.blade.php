@@ -5028,14 +5028,11 @@ function generarPDF(d,nombre){
 
   doc.autoTable({
     startY:68,
-    head:[['Concepto','Valor']],
+    head:[['Detalle','Valor']],
     body:[
-      ['Ingresos','$'+d.ing.toFixed(2)],
       ['Gastos operativos','$'+(d.gas-(d.inv||0)).toFixed(2)],
       ['Inversión','$'+(d.inv||0).toFixed(2)],
-      ['Beneficio neto','$'+d.neto.toFixed(2)],
       ['Margen',d.margen+'%'],
-      ['Ventas del período',''+d.vts.length],
     ],
     theme:'grid', headStyles:{fillColor:verde}, styles:{fontSize:9},
     columnStyles:{1:{halign:'right',fontStyle:'bold'}},
@@ -5044,17 +5041,17 @@ function generarPDF(d,nombre){
   if(d.vts.length){
     doc.autoTable({
       startY:doc.lastAutoTable.finalY+8,
-      head:[['Fecha','Producto','Talla','Cant.','Cliente','Pago','Ref.','Importe']],
+      head:[['Fecha','Producto','Talla','Cant.','Canal','Cliente','Pago','Ref.','Importe']],
       body:d.vts.map(v=>{
         const p=(v.pagos&&v.pagos[0])||null;
         const met=p?(METODOS_PAGO[p.metodo]?.label||p.metodo):'—';
         const ref=p?(p.referencia||p.confirmacion||p.id_orden||p.ref_receptor||''):'';
         const bs=(p&&p.moneda==='VES')?`\n${fmtBs(parseFloat(p.monto))}`:'';
-        return [v.fecha,v.equipo,v.talla||'—',v.cant,v.cliente||'—',met+bs,ref,'$'+v.imp.toFixed(2)];
+        return [v.fecha,v.equipo,v.talla||'—',v.cant,v.canal||'—',v.cliente||'—',met+bs,ref,'$'+v.imp.toFixed(2)];
       }),
-      foot:[['','','','','','','TOTAL','$'+d.vts.reduce((s,v)=>s+v.imp,0).toFixed(2)]],
+      foot:[['','','','','','','','TOTAL','$'+d.vts.reduce((s,v)=>s+v.imp,0).toFixed(2)]],
       theme:'striped', headStyles:{fillColor:verde}, footStyles:{fillColor:[240,240,240],textColor:[0,0,0],fontStyle:'bold'},
-      styles:{fontSize:7.5}, columnStyles:{7:{halign:'right'}},
+      styles:{fontSize:7.5}, columnStyles:{8:{halign:'right'}},
     });
 
     // Resumen por método de pago
@@ -5075,13 +5072,16 @@ function generarPDF(d,nombre){
     });
   }
 
-  if(d.txs.length){
+  // Solo GASTOS, en su propio cuadro (para ver en qué se gastó)
+  const _gastos=d.txs.filter(t=>t.tipo==='gasto');
+  if(_gastos.length){
     doc.autoTable({
       startY:doc.lastAutoTable.finalY+8,
-      head:[['Fecha','Tipo','Descripción','Canal','Importe']],
-      body:d.txs.map(t=>[t.fecha,t.tipo==='ingreso'?'Ingreso':'Gasto',t.desc,t.canal,(t.tipo==='ingreso'?'+':'-')+'$'+t.imp.toFixed(2)]),
-      theme:'striped', headStyles:{fillColor:verde},
-      styles:{fontSize:8}, columnStyles:{4:{halign:'right'}},
+      head:[['Fecha','Descripción','Categoría','Importe']],
+      body:_gastos.map(t=>[t.fecha,t.desc,t.canal,'-$'+t.imp.toFixed(2)]),
+      foot:[['','','TOTAL GASTOS','-$'+_gastos.reduce((s,t)=>s+t.imp,0).toFixed(2)]],
+      theme:'striped', headStyles:{fillColor:[220,38,38]}, footStyles:{fillColor:[240,240,240],textColor:[0,0,0],fontStyle:'bold'},
+      styles:{fontSize:8}, columnStyles:{3:{halign:'right'}},
     });
   }
 
