@@ -200,7 +200,7 @@ class CamisetaController extends Controller
         return response()->json([
             'encontrado' => true,
             'codigo'     => $codigo,
-            'talla'      => $fila->talla,
+            'talla'      => ($fila->talla !== null && $fila->talla !== '') ? $fila->talla : 'U', // igual que index()
             'camiseta'   => $this->formatear($camiseta),
         ]);
     }
@@ -252,7 +252,9 @@ class CamisetaController extends Controller
     }
 
     // Importación masiva desde Excel: el frontend envía los productos ya agrupados.
-    // Hace upsert por (equipo + color + departamento): si existe, actualiza; si no, crea.
+    // Hace upsert por (equipo + color + marca + departamento): si existe, actualiza; si no, crea.
+    // (Misma regla que usa el frontend para agrupar filas; antes no miraba la marca y dos
+    //  productos iguales de marcas distintas se fusionaban en uno.)
     // Todo dentro de una transacción (si algo falla, no queda nada a medias).
     public function importar(Request $request)
     {
@@ -289,7 +291,9 @@ class CamisetaController extends Controller
                 // Buscar un producto equivalente para no duplicar
                 $q = DB::table('camisetas')->where('equipo', $equipo);
                 if ($color !== null) $q->where('color', $color); else $q->whereNull('color');
-                if ($departamento !== null) $q->where('departamento', $departamento);
+                if ($departamento !== null) $q->where('departamento', $departamento); else $q->whereNull('departamento');
+                if ($temp === '—') $q->where(fn($w) => $w->where('temporada', '—')->orWhereNull('temporada')->orWhere('temporada', ''));
+                else $q->where('temporada', $temp);
                 $ex = $q->first();
 
                 if ($ex) {
