@@ -417,7 +417,6 @@ body.noche .ni.active::after{background:#a9abff}
     <div class="page" id="page-dev"><div id="dev-c"></div></div>
     <div class="page" id="page-ventas"><div id="ven-c"></div></div>
     <div class="page" id="page-aprobar"><div id="apr-c"></div></div>
-    <div class="page" id="page-fin"><div id="fin-c"></div></div>
     <div class="page" id="page-verstock"><div id="vs-c"></div></div>
     <div class="page" id="page-misventas"><div id="mv-c"></div></div>
     <div class="page" id="page-caja"><div id="caja-c"></div></div>
@@ -957,6 +956,10 @@ body.noche .ni.active::after{background:#a9abff}
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="mtitle"><span id="ncam-title">Nuevo producto</span><button class="mclose" onclick="closeM('m-nueva-cam')"><i class="ti ti-x"></i></button></div>
+    <div id="nc-borrador-aviso" style="display:none;background:var(--al);border-radius:11px;padding:10px 12px;margin-bottom:10px;font-size:13px;align-items:center;justify-content:space-between;gap:8px">
+      <span><i class="ti ti-history"></i> Recuperé lo que estabas cargando</span>
+      <button type="button" onclick="ncDescartarBorrador()" style="border:none;background:none;color:var(--ad);font-weight:800;font-size:13px;cursor:pointer;padding:4px">Empezar de cero</button>
+    </div>
 
     <label class="fl" style="margin-top:0">¿Qué tipo de producto es?</label>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px">
@@ -1472,7 +1475,7 @@ function goTo(p){
   document.querySelectorAll('.ni').forEach(x=>x.classList.remove('active'));
   const pg=document.getElementById('page-'+p);if(pg)pg.classList.add('active');
   const ni=document.getElementById('ni-'+p);if(ni)ni.classList.add('active');
-  ({home:renderHome,pedido:renderPedido,stock:renderStock,envios:renderEnvios,dev:renderDev,ventas:renderVentas,misventas:renderMisVentas,aprobar:renderAprobar,fin:renderFin,verstock:renderVerStock,caja:renderCaja,ajustes:renderAjustes,historial:renderHistorial,clientes:renderClientes,nomina:renderNomina,mas:renderMas,dashboard:renderDashboard})[p]?.();
+  ({home:renderHome,pedido:renderPedido,stock:renderStock,envios:renderEnvios,dev:renderDev,ventas:renderVentas,misventas:renderMisVentas,aprobar:renderAprobar,verstock:renderVerStock,caja:renderCaja,ajustes:renderAjustes,historial:renderHistorial,clientes:renderClientes,nomina:renderNomina,mas:renderMas,dashboard:renderDashboard})[p]?.();
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -1481,7 +1484,9 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 function openM(id){document.getElementById(id).classList.add('open')}
 function closeM(id){document.getElementById(id).classList.remove('open')}
 function setv(id,val){const s=document.getElementById(id);if(!s)return;for(let o of s.options)if(o.value===val||o.text===val){o.selected=true;break}}
-document.querySelectorAll('.mbg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+// Estas ventanas solo se cierran con la ✕ (tocar fuera por accidente hacía perder lo cargado)
+const MODALES_SIN_CIERRE_FUERA=['m-nueva-cam','m-carrito'];
+document.querySelectorAll('.mbg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m && !MODALES_SIN_CIERRE_FUERA.includes(m.id))m.classList.remove('open')}));
 document.getElementById('lpin').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 
 // ── SINCRONIZACIÓN DUAL (local / servidor) ────────────────────────────────────
@@ -1588,8 +1593,42 @@ function procesarScan(codigo){
   const cb=scanCallback; scanCallback=null;
   if(cb) cb(codigo);
 }
+// Limpia un código: quita espacios/caracteres invisibles que mandan algunos lectores.
+// Devuelve '!' + valor si viene dañado por Excel (notación científica o más de 15 dígitos numéricos).
+function normCodigo(v){
+  if(v==null) return '';
+  if(typeof v==='number'){
+    if(!isFinite(v)) return '';
+    const n=Math.round(v);
+    return (Math.abs(n)>=1e15 || n!==v) ? '!'+String(v) : String(n);
+  }
+  const s=String(v).replace(/[\u0000-\u001F\u007F]/g,'').trim();
+  if(/^\d+(?:[.,]\d+)?e\+?\d+$/i.test(s)) return '!'+s;
+  return s;
+}
+// Índice local código → producto/talla: el escaneo se resuelve al instante en el
+// dispositivo (sin esperar a internet). Si no aparece aquí, se pregunta al servidor.
+let _idxCod=null, _idxRef=null, _idxN=-1;
+function indiceCodigos(){
+  // Se arma en cada lectura (1500 productos ≈ 1 ms) para que nunca quede desactualizado
+  _idxCod=new Map();
+  camisetas.forEach(c=>Object.entries(c.codigos||{}).forEach(([t,cod])=>{
+    const k=String(cod||'').trim(); if(!k) return;
+    _idxCod.set(k,{c,t}); const sin=k.replace(/^0+/,''); if(sin&&!_idxCod.has(sin)) _idxCod.set(sin,{c,t});
+  }));
+  return _idxCod;
+}
 async function buscarCodigo(codigo){
-  return apiCall('GET','/camisetas/barcode/'+encodeURIComponent(codigo));
+  codigo=normCodigo(codigo).replace(/^!/,'');
+  {const idx=indiceCodigos(); const h=idx.get(codigo)||idx.get(codigo.replace(/^0+/,''));
+   if(h) return {encontrado:true, camiseta:h.c, talla:h.t};}
+  const r=await apiCall('GET','/camisetas/barcode/'+encodeURIComponent(codigo));
+  // Excel suele quitar los ceros de adelante al importar: si no aparece, probar sin ellos
+  if(r && !r.encontrado && /^0+\d/.test(codigo)){
+    const sin=codigo.replace(/^0+/,'');
+    try{ const r2=await apiCall('GET','/camisetas/barcode/'+encodeURIComponent(sin)); if(r2&&r2.encontrado) return r2; }catch(e){}
+  }
+  return r;
 }
 // Si cierran el escáner tocando el fondo oscuro, apagar la cámara también
 document.getElementById('m-scan').addEventListener('click',e=>{
@@ -1676,6 +1715,7 @@ async function confirmarAsociarCodigo(){
     await apiCall('POST','/camisetas/barcode',{codigo:pendingCodigo,camiseta_id:camId,talla});
   }catch(e){ return; }
   const i=camisetas.findIndex(c=>c.id===camId);
+  if(i>=0){ camisetas[i].codigos=Object.assign({},camisetas[i].codigos||{},{[talla]:pendingCodigo}); _idxCod=null; }
   if(cant>0 && i>=0){
     camisetas[i].tallas[talla]=(camisetas[i].tallas[talla]||0)+cant;
     try{ await syncCamisetas('stock',camisetas[i].tallas,camId); }catch(e){}
@@ -1701,7 +1741,9 @@ function modoEscanear(){
 }
 function escanearParaVenta(){
   if(!MODO_SERVIDOR){toast('El escáner requiere conexión con el servidor');return}
-  abrirScanner(async codigo=>{
+  abrirScanner(codigoAVenta);
+}
+async function codigoAVenta(codigo){
     try{
       const r=await buscarCodigo(codigo);
       if(!r.encontrado){
@@ -1720,16 +1762,23 @@ function escanearParaVenta(){
       const stock=cam.tallas[r.talla]||0;
       toast(stock>0?`✓ ${cam.equipo} ${r.talla} — quedan ${stock} UND`:`⚠ ${cam.equipo} ${r.talla} está SIN STOCK`);
     }catch(e){ openM('m-venta'); }
-  });
 }
 function escanearParaCarrito(){
   if(!MODO_SERVIDOR){toast('El escáner requiere conexión con el servidor');return}
-  abrirScanner(async codigo=>{
+  abrirScanner(codigoACarrito);
+}
+async function codigoACarrito(codigo){
     try{
       const r=await buscarCodigo(codigo);
       openM('m-carrito');
       if(!r.encontrado){ toast('Código no registrado — asócialo primero desde Inventario'); return; }
       const cam=camisetas.find(c=>c.id===r.camiseta.id)||r.camiseta;
+      // Si ya está en el carrito, sumar 1 a esa línea en vez de crear otra
+      {const it=carrito.find(x=>x.camId===cam.id && x.talla===r.talla);
+       if(it){ const st=cam.tallas[r.talla]||0;
+         if(it.cant+1>st){ toast(`Solo hay ${st} UND de ${cam.equipo} ${r.talla}`); return; }
+         it.cant++; carritoRenderItems(); carritoRenderPagos(); carritoStockInfo();
+         toast(`✓ ${cam.equipo} ${r.talla} ×${it.cant}`); return; }}
       document.getElementById('cart-cam').value=String(cam.id);
       {const _sc=document.getElementById('cart-cam-search'); if(_sc)_sc.value=nombreProducto(cam);}
       carritoAutoPrecio();
@@ -1741,7 +1790,93 @@ function escanearParaCarrito(){
       carritoAgregarProducto();
       toast(`✓ ${cam.equipo} ${r.talla} agregada al carrito`);
     }catch(e){ openM('m-carrito'); }
-  });
+}
+
+// ── LECTOR FÍSICO (lector de mesa / pistola USB o Bluetooth) ──────────────────
+// Estos lectores "escriben" el código como un teclado muy rápido y terminan con Enter.
+// Detectamos esa ráfaga y la mandamos a donde corresponda según la pantalla abierta.
+const LECTOR_GAP_MS=70, LECTOR_MIN=4;
+let _lBuf='', _lUlt=0, _lEl=null, _lValIni='', _lUltCodigoAdd=null;
+function esCampoCodigo(el){ return el && (el.classList.contains('nc-cod-in') || el.id==='nc-cod-U'); }
+document.addEventListener('keydown',e=>{
+  if(!role) return;                                   // pantalla de login
+  const el=document.activeElement;
+  if(el && el.id==='lpin') return;
+  if(e.ctrlKey||e.altKey||e.metaKey) return;
+  const ahora=Date.now();
+  if(e.key==='Enter'){
+    const codigo=_lBuf; const elIni=_lEl, valIni=_lValIni;
+    const fueLector=codigo.length>=LECTOR_MIN && (ahora-_lUlt)<=LECTOR_GAP_MS*3;
+    _lBuf=''; _lEl=null;
+    if(!fueLector){
+      // Enter normal en "unidades que llegaron" = confirmar
+      if(el && el.id==='sa-cant'){ e.preventDefault(); confirmarSumarStock(); }
+      return;
+    }
+    e.preventDefault(); e.stopPropagation();
+    // En los campos de código del formulario, el lector escribe ahí: solo saltar al siguiente
+    if(esCampoCodigo(el)){
+      const todos=[...document.querySelectorAll('#m-nueva-cam .nc-cod-in')].filter(x=>x.offsetParent);
+      const i=todos.indexOf(el); if(i>=0 && todos[i+1]) todos[i+1].focus();
+      toast('✓ Código cargado'); return;
+    }
+    // En cualquier otro campo, deshacer lo que "tecleó" el lector
+    if(elIni && 'value' in elIni){ elIni.value=valIni; elIni.dispatchEvent(new Event('input',{bubbles:true})); }
+    lectorFisico(codigo);
+    return;
+  }
+  if(e.key.length!==1) return;
+  if(ahora-_lUlt>LECTOR_GAP_MS){ _lBuf=''; _lEl=el; _lValIni=(el&&'value' in el)?el.value:''; }
+  _lBuf+=e.key; _lUlt=ahora;
+}, true);
+
+async function lectorFisico(codigo){
+  codigo=normCodigo(codigo); if(!codigo) return;
+  const abierto=id=>{const m=document.getElementById(id); return !!(m&&m.classList.contains('open'));};
+  if(navigator.vibrate) navigator.vibrate(60);
+  // Ventana de la cámara abierta: tratarlo igual que una lectura de cámara
+  if(abierto('m-scan')){ procesarScan(codigo); return; }
+  // Formulario de producto: poner el código en el primer campo de código vacío
+  if(abierto('m-nueva-cam')){
+    const cu=document.getElementById('nc-cod-U');
+    if(catProducto==='otro' && cu){ cu.value=codigo; cu.dispatchEvent(new Event('input',{bubbles:true})); toast('✓ Código puesto en el producto'); return; }
+    const libres=[...document.querySelectorAll('#m-nueva-cam .nc-cod-in')].filter(x=>!x.value.trim());
+    if(!libres.length){ toast('Todas las tallas ya tienen código'); return; }
+    libres[0].value=codigo; libres[0].dispatchEvent(new Event('input',{bubbles:true}));
+    toast(`✓ Código puesto en talla ${libres[0].dataset.talla}`); return;
+  }
+  if(!MODO_SERVIDOR){ toast('El lector requiere conexión con el servidor'); return; }
+  // Entrada de mercancía abierta: mismo código = +1, otro código = guardar el anterior y seguir
+  if(abierto('m-scan-add')){
+    if(codigo===_lUltCodigoAdd){
+      const c=document.getElementById('sa-cant'); c.value=(+c.value||0)+1;
+      toast(`+1 · ${c.value} UND`); return;
+    }
+    await confirmarSumarStock();
+    lectorEntrada(codigo); return;
+  }
+  if(abierto('m-carrito')){ codigoACarrito(codigo); return; }
+  if(abierto('m-venta')){ codigoAVenta(codigo); return; }
+  if(document.querySelector('.mbg.open')){ toast('Cierra esta ventana para escanear'); return; }
+  if(curPage==='stock'){ lectorEntrada(codigo); return; }
+  // Cualquier otra pantalla: abrir la venta con el producto escaneado
+  abrirCarrito(); codigoACarrito(codigo);
+}
+async function lectorEntrada(codigo){
+  try{
+    const r=await buscarCodigo(codigo);
+    if(!r.encontrado){ prepararAsociar(codigo); return; }
+    const c=camisetas.find(x=>x.id===r.camiseta.id)||r.camiseta;
+    document.getElementById('sa-nombre').textContent=nombreProducto(c);
+    document.getElementById('sa-talla').textContent=r.talla==='U'?'Única':r.talla;
+    document.getElementById('sa-stock').textContent=(c.tallas&&c.tallas[r.talla])||0;
+    document.getElementById('sa-camid').value=c.id;
+    document.getElementById('sa-talla-h').value=r.talla;
+    const cant=document.getElementById('sa-cant'); cant.value=1;
+    _lUltCodigoAdd=codigo;
+    openM('m-scan-add');
+    setTimeout(()=>{ try{ cant.focus(); cant.select(); }catch(e){} },50);
+  }catch(e){}
 }
 // ── MÉTODOS DE PAGO (Venezuela) ───────────────────────────────────────────────
 const BANCOS_VE=['0102 Banco de Venezuela','0104 Venezolano de Crédito','0105 Mercantil','0108 BBVA Provincial','0114 Bancaribe','0115 Exterior','0128 Banco Caroní','0134 Banesco','0137 Sofitasa','0138 Banco Plaza','0146 Bangente','0151 BFC Fondo Común','0156 100% Banco','0157 DelSur','0163 Banco del Tesoro','0166 Banco Agrícola','0168 Bancrecer','0169 Mi Banco','0171 Banco Activo','0172 Bancamiga','0174 Banplus','0175 Bicentenario','0177 Banfanb','0191 BNC','Otro'];
@@ -2004,7 +2139,6 @@ function refrescarVistasVenta(){
   if(curPage==='ventas') renderVentas();
   if(curPage==='stock') renderStock();
   if(curPage==='home') renderHome();
-  if(curPage==='fin') renderFin();
   if(curPage==='caja') renderCaja();
 }
 
@@ -2812,6 +2946,7 @@ async function importarArchivo(input){
     if(hi<0) hi=1;
     const datos=filas.slice(hi+1);
     const grupos={};
+    impCodDanados=[]; impCodVistos={};
     datos.forEach(r=>{
       if(!r) return;
       const nombre=String(r[0]||'').trim();
@@ -2822,7 +2957,9 @@ async function importarArchivo(input){
       const color=String(r[2]||'').trim();
       const marca=String(r[3]||'').trim();
       const talla=String(r[4]==null?'':r[4]).trim().toUpperCase();
-      const codigo=String(r[5]==null?'':r[5]).trim();
+      let codigo=normCodigo(r[5]);
+      if(codigo.startsWith('!')){ impCodDanados.push(nombre+(talla?' '+talla:'')); codigo=''; }
+      else if(codigo){ (impCodVistos[codigo]=impCodVistos[codigo]||[]).push(nombre+(color?' · '+color:'')+(talla?' '+talla:'')); }
       const cant=impEntero(r[6]);
       const costo=impNumero(r[7]);
       const p1=impNumero(r[8]), p2=impNumero(r[9]);
@@ -2861,6 +2998,18 @@ async function importarArchivo(input){
     document.getElementById('imp-confirmar').style.display='none';
   }
 }
+let impCodDanados=[], impCodVistos={};
+function avisoCodigosImport(){
+  const rep=Object.entries(impCodVistos).filter(([k,v])=>v.length>1);
+  let h='';
+  if(impCodDanados.length){
+    h+=`<div class="abox abox-r" style="margin-bottom:10px"><i class="ti ti-barcode-off"></i><div><div class="abox-title">${impCodDanados.length} código${impCodDanados.length!==1?'s':''} de barras dañado${impCodDanados.length!==1?'s':''} por Excel</div><div class="abox-sub">Excel los convirtió en algo como <b>7,7E+12</b> y perdió dígitos. Esos productos se guardan <b>sin código</b>. Para arreglarlo: pon la columna de código en formato <b>Texto</b>, vuelve a pegar los códigos y reimporta (no se duplica nada). O escanéalos una vez desde Inventario.<br><span style="font-size:11px">Ej: ${impCodDanados.slice(0,4).join(', ')}${impCodDanados.length>4?'…':''}</span></div></div></div>`;
+  }
+  if(rep.length){
+    h+=`<div class="abox abox-r" style="margin-bottom:10px"><i class="ti ti-copy"></i><div><div class="abox-title">${rep.length} código${rep.length!==1?'s':''} repetido${rep.length!==1?'s':''} en productos distintos</div><div class="abox-sub">Un código solo puede ser de un producto; el lector reconocerá solo uno de ellos. Revisa:<br><span style="font-size:11px">${rep.slice(0,3).map(([k,v])=>`<b>${k}</b>: ${v.slice(0,2).join(' / ')}`).join('<br>')}${rep.length>3?'<br>…':''}</span></div></div></div>`;
+  }
+  return h;
+}
 function renderPreviewImport(prods){
   const prev=document.getElementById('imp-preview');
   const btn=document.getElementById('imp-confirmar');
@@ -2875,7 +3024,7 @@ function renderPreviewImport(prods){
     const precio=p.precio!=null?('$'+p.precio):'—';
     return `<tr style="border-top:1px solid var(--gray)"><td style="padding:6px 8px;font-weight:700">${p.equipo}${p.color?' · '+p.color:''}</td><td style="padding:6px 8px;color:var(--txm);font-size:11.5px">${p.departamento||''}</td><td style="padding:6px 8px;font-size:11.5px">${ts}</td><td style="padding:6px 8px;text-align:right;font-weight:700">${precio}</td></tr>`;
   }).join('');
-  prev.innerHTML=`
+  prev.innerHTML=avisoCodigosImport()+`
     <div class="card" style="margin:4px 0 10px;padding:12px 14px">
       <div style="font-size:14px;font-weight:800">${prods.length} producto${prods.length!==1?'s':''} · ${totU} unidades</div>
       <div style="font-size:12px;color:var(--txm);margin-top:2px">Si un producto ya existe (mismo nombre, color y depto), se <b>actualiza</b> en vez de duplicarse.</div>
@@ -2964,8 +3113,50 @@ function abrirNuevaCamiseta(){
   {const _tt=document.getElementById('nc-tipotalla'); if(_tt)_tt.value='letras';}
   ncRenderTallas();
   document.getElementById('nc-total').textContent='0';
+  ncRestaurarBorrador();
   openM('m-nueva-cam');
 }
+// ── BORRADOR de "Nuevo producto" (se guarda solo mientras escribes) ──
+const NC_BORRADOR_K='fe4_nc_borrador';
+function ncEsNuevo(){ return !document.getElementById('nc-id').value; }
+function ncBorrarBorrador(){ try{ localStorage.removeItem(NC_BORRADOR_K); }catch(e){} }
+function ncGuardarBorrador(){
+  if(!ncEsNuevo()) return;
+  const m=document.getElementById('m-nueva-cam'); if(!m) return;
+  const campos={}, tallas={}, codigos={};
+  m.querySelectorAll('input[id],select[id]').forEach(el=>{ if(el.type!=='hidden'&&el.type!=='file') campos[el.id]=el.value; });
+  m.querySelectorAll('#nc-tallas-grid .nc-talla-in').forEach(el=>{ tallas[el.dataset.talla]=el.value; });
+  m.querySelectorAll('#nc-codigos .nc-cod-in').forEach(el=>{ codigos[el.dataset.talla]=el.value; });
+  const txt=k=>String(campos[k]||'').trim();
+  const hay=['nc-equipo','nc-color','nc-precio','nc-precio2','nc-costo','nc-cod-U','nc-marca'].some(txt)
+    || (+campos['nc-U']>0) || Object.values(tallas).some(v=>+v>0) || Object.values(codigos).some(v=>String(v).trim());
+  if(!hay){ ncBorrarBorrador(); return; }
+  try{ localStorage.setItem(NC_BORRADOR_K, JSON.stringify({cat:catProducto,campos,tallas,codigos,ts:Date.now()})); }catch(e){}
+}
+function ncRestaurarBorrador(){
+  const av=document.getElementById('nc-borrador-aviso'); if(av) av.style.display='none';
+  let b=null; try{ b=JSON.parse(localStorage.getItem(NC_BORRADOR_K)||'null'); }catch(e){}
+  if(!b || !b.campos) return;
+  if(Date.now()-(b.ts||0) > 7*864e5){ ncBorrarBorrador(); return; } // más de 7 días: descartar
+  setCatProducto(b.cat==='otro'?'otro':'camiseta');
+  const c=b.campos;
+  ncRenderMarcas('');
+  {const tt=document.getElementById('nc-tipotalla'); if(tt && c['nc-tipotalla']) tt.value=c['nc-tipotalla'];}
+  const nums={}; Object.keys(b.tallas||{}).forEach(t=>{ nums[t]=+b.tallas[t]||0; });
+  ncRenderTallas(Object.keys(nums).length?nums:undefined, b.codigos||{});
+  Object.keys(c).forEach(id=>{
+    if(id==='nc-id'||id==='nc-tipotalla') return;
+    const el=document.getElementById(id); if(el) el.value=c[id];
+  });
+  {const sl=document.getElementById('nc-marca-sel'), inp=document.getElementById('nc-marca');
+   if(sl&&inp){ if(sl.value==='__nueva__'){ inp.style.display='block'; inp.value=c['nc-marca']||''; } else inp.style.display='none'; }}
+  ncMargen(); actualizarTotalNC();
+  if(av) av.style.display='flex';
+}
+function ncDescartarBorrador(){ ncBorrarBorrador(); abrirNuevaCamiseta(); toast('Formulario limpio'); }
+{let _ncT=null; const _m=document.getElementById('m-nueva-cam');
+ if(_m){ const f=()=>{ clearTimeout(_ncT); _ncT=setTimeout(ncGuardarBorrador,400); };
+   _m.addEventListener('input',f); _m.addEventListener('change',f); }}
 function ncMargen(){
   const costo=+(document.getElementById('nc-costo')||{}).value||0;
   const p1=+(document.getElementById('nc-precio')||{}).value||0;
@@ -2985,6 +3176,7 @@ function actualizarTotalNC(){
 function editarCamiseta(id){
   const c=camisetas.find(x=>x.id===id);if(!c)return;
   document.getElementById('ncam-title').textContent=esCamiseta(c)?'Editar producto':'Editar producto';
+  {const _av=document.getElementById('nc-borrador-aviso'); if(_av)_av.style.display='none';}
   setCatProducto(esCamiseta(c)?'camiseta':'otro');
   {const _b=document.getElementById('nc-btn-seguir'); if(_b)_b.style.display='none';}
   document.getElementById('nc-categoria').value=esCamiseta(c)?'':c.categoria;
@@ -3090,12 +3282,16 @@ async function saveNuevaCamiseta(seguir=false){
       document.getElementById('nc-color').value='';
       ncRenderTallas();
       document.getElementById('nc-color').focus();
+      ncGuardarBorrador(); // el borrador queda con lo que sigue (mismo producto, sin color)
+      {const _av=document.getElementById('nc-borrador-aviso'); if(_av)_av.style.display='none';}
       toast(`✓ ${equipo}${color?' · '+color:''} guardado · agrega el siguiente color`);
     } else {
+      ncBorrarBorrador();
       closeM('m-nueva-cam');
       // La asociación del código va por detrás (no bloquea el guardado)
       if(pendingCodigo && MODO_SERVIDOR){
         const _cod=pendingCodigo, _id=data.id, _tal=pendingTalla||'M';
+        data.codigos=Object.assign({},data.codigos||{},{[_tal]:_cod}); _idxCod=null;
         apiCall('POST','/camisetas/barcode',{codigo:_cod,camiseta_id:_id,talla:_tal})
           .then(()=>toast(`${equipo} añadida ✓ Código asociado a talla ${_tal}`))
           .catch(()=>toast(`${equipo} añadida ✓ pero el código no se pudo asociar`));
@@ -4338,60 +4534,6 @@ function renderVerStock(){
     }).join('')}</div>`;
 }
 
-// ── FINANZAS (dueño) ──────────────────────────────────────────────────────────
-function renderFin(){
-  const cont=document.getElementById('fin-c');
-  const ing=transacciones.filter(t=>t.tipo==='ingreso').reduce((s,t)=>s+t.imp,0);
-  const gas=transacciones.filter(t=>t.tipo==='gasto').reduce((s,t)=>s+t.imp,0);
-  const neto=ing-gas;
-  const margen=ing>0?Math.round(neto/ing*100):0;
-
-  // Por canal
-  const canales=['Tienda física','Instagram','WhatsApp','Web'];
-  const canalData=canales.map(c=>({canal:c,total:transacciones.filter(t=>t.tipo==='ingreso'&&t.canal===c).reduce((s,t)=>s+t.imp,0)})).filter(c=>c.total>0);
-  const maxCanal=Math.max(...canalData.map(c=>c.total),1);
-
-  // Por semana (últimas 4 semanas)
-  const ventasSem=ventas.reduce((acc,v)=>{acc[v.fecha]=(acc[v.fecha]||0)+v.imp;return acc},{});
-
-  cont.innerHTML=`
-    <div class="mgrid">
-      <div class="mc mc-g"><i class="ti ti-trending-up mc-ico"></i><div class="mcl">Ingresos</div><div class="mcv">${fmt(ing)}</div></div>
-      <div class="mc mc-r"><i class="ti ti-trending-down mc-ico"></i><div class="mcl">Gastos</div><div class="mcv">${fmt(gas)}</div></div>
-      <div class="mc"><div class="mcl">Beneficio neto</div><div class="mcv" style="color:var(--p)">${fmt(neto)}</div></div>
-      <div class="mc"><div class="mcl">Margen</div><div class="mcv">${margen}%</div></div>
-    </div>
-    <div class="stitle">Ventas por canal</div>
-    <div class="card">
-      ${canalData.length?canalData.map(c=>`
-        <div style="margin-bottom:11px">
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
-            <span style="display:flex;align-items:center;gap:5px"><i class="ti ${origenIco(c.canal)}" style="font-size:14px;color:var(--txm)"></i>${c.canal}</span>
-            <span style="font-weight:800">${fmt(c.total)}</span>
-          </div>
-          <div class="pbar"><div class="pfill" style="width:${Math.round(c.total/maxCanal*100)}%;background:var(--gm)"></div></div>
-        </div>`).join(''):'<div style="font-size:13px;color:var(--txm)">Sin datos aún</div>'}
-    </div>
-    <div class="stitle">Top productos vendidos</div>
-    <div class="card">
-      ${Object.entries(ventas.reduce((acc,v)=>{acc[v.equipo]=(acc[v.equipo]||0)+v.imp;return acc},{})).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([eq,v],i)=>`
-        <div class="li">
-          <div class="liico ${['ig','ia','igr','igr','igr'][i]}" style="font-weight:800;font-size:14px">${i+1}</div>
-          <div class="libody"><div class="liname">${eq}</div></div>
-          <div class="liright" style="font-weight:800;color:var(--g)">${fmt(v)}</div>
-        </div>`).join('')||'<div style="font-size:13px;color:var(--txm)">Sin ventas registradas</div>'}
-    </div>
-    <div class="stitle">Movimientos</div>
-    <div class="card">
-      ${[...transacciones].reverse().slice(0,10).map(t=>`
-        <div class="li">
-          <div class="liico ${t.tipo==='ingreso'?'ig':'ir'}"><i class="ti ${t.tipo==='ingreso'?'ti-arrow-up':'ti-arrow-down'}"></i></div>
-          <div class="libody"><div class="liname">${t.desc}</div><div class="lisub">${t.canal} · ${t.fecha}</div></div>
-          <div class="liright" style="font-weight:800;color:${t.tipo==='ingreso'?'var(--g)':'var(--r)'}">${t.tipo==='ingreso'?'+':'-'}${fmt(t.imp)}</div>
-        </div>`).join('')}
-    </div>
-    <button class="abtn abtn-g" onclick="abrirTx('gasto')"><i class="ti ti-plus"></i> Registrar movimiento</button>`;
-}
 function abrirTx(modo='gasto'){
   document.getElementById('tx-desc').value='';
   document.getElementById('tx-imp').value='';
@@ -4601,17 +4743,6 @@ function renderCaja(){
             <div style="font-size:11px;color:var(--txh)">en período</div>
           </div>
         </div>
-        ${data.txs.length?`
-        <div style="font-size:11px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Movimientos del período</div>
-        ${data.txs.slice(-6).reverse().map(t=>`
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray);font-size:13px">
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="width:28px;height:28px;border-radius:8px;background:${t.tipo==='ingreso'?'var(--gl)':'var(--rl)'};display:flex;align-items:center;justify-content:center;font-size:14px;color:${t.tipo==='ingreso'?'var(--g)':'var(--r)'}"><i class="ti ${t.tipo==='ingreso'?'ti-arrow-up':'ti-arrow-down'}"></i></div>
-              <span style="color:var(--txm)">${t.desc}</span>
-            </div>
-            <span style="font-weight:800;color:${t.tipo==='ingreso'?'var(--g)':'var(--r)'}">${t.tipo==='ingreso'?'+':'-'}${fmt(t.imp)}</span>
-          </div>`).join('')}
-        `:'<div style="font-size:13px;color:var(--txh);text-align:center;padding:10px">Sin movimientos</div>'}
         ${clave==='dia'?desgloseCajaHTML(hoyStr):''}
       </div>`;
   }
@@ -5026,32 +5157,27 @@ function generarPDF(d,nombre){
    });}
   doc.setTextColor(0,0,0); doc.setFont(undefined,'normal');
 
-  doc.autoTable({
-    startY:68,
-    head:[['Detalle','Valor']],
-    body:[
-      ['Gastos operativos','$'+(d.gas-(d.inv||0)).toFixed(2)],
-      ['Inversión','$'+(d.inv||0).toFixed(2)],
-      ['Margen',d.margen+'%'],
-    ],
-    theme:'grid', headStyles:{fillColor:verde}, styles:{fontSize:9},
-    columnStyles:{1:{halign:'right',fontStyle:'bold'}},
-  });
+  // Debajo de los recuadros: solo lo que ellos no muestran (margen e inversión)
+  {const _ext=['Margen: '+d.margen+'%'];
+   if((d.inv||0)>0){ _ext.push('Gastos operativos: $'+(d.gas-d.inv).toFixed(2)); _ext.push('Inversión: $'+d.inv.toFixed(2)); }
+   doc.setFontSize(9); doc.setTextColor(90,90,90); doc.text(_ext.join('   ·   '),14,67);
+   doc.setTextColor(0,0,0);}
+  let _y=73;
 
   if(d.vts.length){
     doc.autoTable({
-      startY:doc.lastAutoTable.finalY+8,
-      head:[['Fecha','Producto','Talla','Cant.','Canal','Cliente','Pago','Ref.','Importe']],
+      startY:_y,
+      head:[['Fecha','Producto','Talla','Cant.','Cliente','Pago','Ref.','Importe']],
       body:d.vts.map(v=>{
         const p=(v.pagos&&v.pagos[0])||null;
         const met=p?(METODOS_PAGO[p.metodo]?.label||p.metodo):'—';
         const ref=p?(p.referencia||p.confirmacion||p.id_orden||p.ref_receptor||''):'';
         const bs=(p&&p.moneda==='VES')?`\n${fmtBs(parseFloat(p.monto))}`:'';
-        return [v.fecha,v.equipo,v.talla||'—',v.cant,v.canal||'—',v.cliente||'—',met+bs,ref,'$'+v.imp.toFixed(2)];
+        return [v.fecha,v.equipo,v.talla||'—',v.cant,v.cliente||'—',met+bs,ref,'$'+v.imp.toFixed(2)];
       }),
-      foot:[['','','','','','','','TOTAL','$'+d.vts.reduce((s,v)=>s+v.imp,0).toFixed(2)]],
+      foot:[['','','','','','','TOTAL','$'+d.vts.reduce((s,v)=>s+v.imp,0).toFixed(2)]],
       theme:'striped', headStyles:{fillColor:verde}, footStyles:{fillColor:[240,240,240],textColor:[0,0,0],fontStyle:'bold'},
-      styles:{fontSize:7.5}, columnStyles:{8:{halign:'right'}},
+      styles:{fontSize:7.5}, columnStyles:{7:{halign:'right'}},
     });
 
     // Resumen por método de pago
@@ -5072,16 +5198,13 @@ function generarPDF(d,nombre){
     });
   }
 
-  // Solo GASTOS, en su propio cuadro (para ver en qué se gastó)
-  const _gastos=d.txs.filter(t=>t.tipo==='gasto');
-  if(_gastos.length){
+  if(d.txs.length){
     doc.autoTable({
-      startY:doc.lastAutoTable.finalY+8,
-      head:[['Fecha','Descripción','Categoría','Importe']],
-      body:_gastos.map(t=>[t.fecha,t.desc,t.canal,'-$'+t.imp.toFixed(2)]),
-      foot:[['','','TOTAL GASTOS','-$'+_gastos.reduce((s,t)=>s+t.imp,0).toFixed(2)]],
-      theme:'striped', headStyles:{fillColor:[220,38,38]}, footStyles:{fillColor:[240,240,240],textColor:[0,0,0],fontStyle:'bold'},
-      styles:{fontSize:8}, columnStyles:{3:{halign:'right'}},
+      startY:d.vts.length?doc.lastAutoTable.finalY+8:_y,
+      head:[['Fecha','Tipo','Descripción','Canal','Importe']],
+      body:d.txs.map(t=>[t.fecha,t.tipo==='ingreso'?'Ingreso':'Gasto',t.desc,t.canal,(t.tipo==='ingreso'?'+':'-')+'$'+t.imp.toFixed(2)]),
+      theme:'striped', headStyles:{fillColor:verde},
+      styles:{fontSize:8}, columnStyles:{4:{halign:'right'}},
     });
   }
 
