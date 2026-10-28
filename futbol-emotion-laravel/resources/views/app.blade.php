@@ -2946,7 +2946,7 @@ async function importarArchivo(input){
     if(hi<0) hi=1;
     const datos=filas.slice(hi+1);
     const grupos={};
-    impCodDanados=[]; impCodVistos={};
+    impCodDanados=[]; impCodVistos={}; impColisiones=[];
     datos.forEach(r=>{
       if(!r) return;
       const nombre=String(r[0]||'').trim();
@@ -2970,8 +2970,10 @@ async function importarArchivo(input){
       if(g.precio==null && p1!=null) g.precio=p1;
       if(g.precio2==null && p2!=null) g.precio2=p2;
       if(g.precioCosto==null && costo!=null) g.precioCosto=costo;
-      if(talla){ g.tallas[talla]=(g.tallas[talla]||0)+cant; if(codigo) g.codigos[talla]=codigo; }
-      else { g.tallas['U']=(g.tallas['U']||0)+cant; if(codigo) g.codigos['U']=codigo; }
+      {const tk=talla||'U', previo=g.codigos[tk];
+       // Mismo nombre+color+marca+depto (+talla) pero otro código = dos productos distintos que se juntarían
+       if(codigo && previo && previo!==codigo) impColisiones.push(`${nombre}${color?' · '+color:''}${talla?' '+talla:''}: ${previo} / ${codigo}`);
+       g.tallas[tk]=(g.tallas[tk]||0)+cant; if(codigo && !previo) g.codigos[tk]=codigo;}
     });
     impProductos=Object.values(grupos).map(g=>{
       const conTallas=Object.keys(g.tallas).some(t=>t!=='U'); // sin talla => producto "otro"
@@ -2998,10 +3000,13 @@ async function importarArchivo(input){
     document.getElementById('imp-confirmar').style.display='none';
   }
 }
-let impCodDanados=[], impCodVistos={};
+let impCodDanados=[], impCodVistos={}, impColisiones=[];
 function avisoCodigosImport(){
   const rep=Object.entries(impCodVistos).filter(([k,v])=>v.length>1);
   let h='';
+  if(impColisiones.length){
+    h+=`<div class="abox abox-r" style="margin-bottom:10px"><i class="ti ti-arrows-join"></i><div><div class="abox-title">${impColisiones.length} producto${impColisiones.length!==1?'s':''} con el mismo nombre pero distinto código</div><div class="abox-sub">Tienen igual nombre, color, marca y departamento, así que la app los toma como <b>uno solo</b>: se suman las cantidades y se queda solo el primer código. Ponles un nombre que los distinga (ej. «Cuaderno 100 hojas» y «Cuaderno 200 hojas») y vuelve a subir el archivo.<br><span style="font-size:11px">${impColisiones.slice(0,4).join('<br>')}${impColisiones.length>4?'<br>…':''}</span></div></div></div>`;
+  }
   if(impCodDanados.length){
     h+=`<div class="abox abox-r" style="margin-bottom:10px"><i class="ti ti-barcode-off"></i><div><div class="abox-title">${impCodDanados.length} código${impCodDanados.length!==1?'s':''} de barras dañado${impCodDanados.length!==1?'s':''} por Excel</div><div class="abox-sub">Excel los convirtió en algo como <b>7,7E+12</b> y perdió dígitos. Esos productos se guardan <b>sin código</b>. Para arreglarlo: pon la columna de código en formato <b>Texto</b>, vuelve a pegar los códigos y reimporta (no se duplica nada). O escanéalos una vez desde Inventario.<br><span style="font-size:11px">Ej: ${impCodDanados.slice(0,4).join(', ')}${impCodDanados.length>4?'…':''}</span></div></div></div>`;
   }
@@ -3027,7 +3032,7 @@ function renderPreviewImport(prods){
   prev.innerHTML=avisoCodigosImport()+`
     <div class="card" style="margin:4px 0 10px;padding:12px 14px">
       <div style="font-size:14px;font-weight:800">${prods.length} producto${prods.length!==1?'s':''} · ${totU} unidades</div>
-      <div style="font-size:12px;color:var(--txm);margin-top:2px">Si un producto ya existe (mismo nombre, color y depto), se <b>actualiza</b> en vez de duplicarse.</div>
+      <div style="font-size:12px;color:var(--txm);margin-top:2px">Si un producto ya existe (mismo nombre, color, marca y depto), se <b>actualiza</b> en vez de duplicarse: su stock queda igual al del Excel.</div>
     </div>
     <div style="max-height:260px;overflow:auto;border:1px solid var(--gray);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:var(--gray)"><th style="text-align:left;padding:7px 8px">Producto</th><th style="text-align:left;padding:7px 8px">Depto</th><th style="text-align:left;padding:7px 8px">Tallas</th><th style="text-align:right;padding:7px 8px">P1</th></tr></thead><tbody>${filas}</tbody></table></div>
     ${prods.length>60?`<div style="font-size:11px;color:var(--txh);margin-top:6px;text-align:center">Mostrando 60 de ${prods.length}. Se guardarán todos.</div>`:''}`;
@@ -3041,7 +3046,21 @@ async function confirmarImportar(){
   const prevTxt=txt.textContent; btn.disabled=true; txt.textContent='Guardando…';
   try{
     if(MODO_SERVIDOR){
-      const r=await apiCall('POST','/camisetas/importar',{productos:impProductos});
+      // Por tandas: 1500 productos en una sola petición pueden pasar el límite de tiempo del servidor
+      const TANDA=200, r={creados:0,actualizados:0}; let hechos=0;
+      try{
+        for(let k=0;k<impProductos.length;k+=TANDA){
+          const lote=impProductos.slice(k,k+TANDA);
+          txt.textContent=`Guardando ${Math.min(k+TANDA,impProductos.length)} de ${impProductos.length}…`;
+          const rr=await apiCall('POST','/camisetas/importar',{productos:lote});
+          r.creados+=(rr&&rr.creados)||0; r.actualizados+=(rr&&rr.actualizados)||0; hechos+=lote.length;
+        }
+      }catch(e){
+        try{ camisetas=await apiCall('GET','/camisetas'); }catch(_){}
+        if(curPage==='stock') renderStock();
+        if(hechos) throw new Error(`se guardaron ${hechos} de ${impProductos.length}. Vuelve a subir el mismo archivo: lo ya guardado se actualiza, no se duplica`);
+        throw e;
+      }
       camisetas=await apiCall('GET','/camisetas');
       closeM('m-importar');
       let msg=`✓ ${r.creados} creado${r.creados!==1?'s':''}`;
