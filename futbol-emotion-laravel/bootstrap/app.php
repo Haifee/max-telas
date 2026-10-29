@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.pin'     => \App\Http\Middleware\AuthPin::class,
             'ensure.owner' => \App\Http\Middleware\EnsureOwner::class,
+            'ensure.rol'   => \App\Http\Middleware\EnsureRol::class,
+        ]);
+
+        // Anti-XSS: limpia < > y comillas de todo texto que entra por el API
+        $middleware->api(append: [
+            \App\Http\Middleware\SanitizarTexto::class,
         ]);
 
         // Permitir cookies de sesión en las peticiones API
