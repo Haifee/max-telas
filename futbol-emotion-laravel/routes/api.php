@@ -20,81 +20,97 @@ Route::post('/logout', [AuthController::class, 'logout']);
 Route::get('/me', [AuthController::class, 'me']);
 
 // ── RUTAS PROTEGIDAS (requieren sesión) ───────────────────────────────────────
-// Nota: 'ensure.owner' (candado de dueño) se aplica solo a las rutas sensibles
-// que el encargado NUNCA usa (aprobaciones, borrados, configuración, finanzas).
+// Permisos (los decide el SERVIDOR, no la pantalla):
+//   · Cualquier rol (incluido trabajador): leer datos, vender con el carrito,
+//     buscar códigos de barras, actividad y notificaciones.
+//   · Dueño y encargado ('ensure.rol:owner,manager'): todo lo que modifica
+//     inventario, ventas ya hechas, pedidos, envíos, gastos y cierres.
+//   · Solo dueño ('ensure.owner'): aprobaciones, borrados, configuración, importar.
 Route::middleware('auth.pin')->group(function () {
 
-    // Camisetas / Inventario
+    // ── Cualquier rol ──
+    Route::get('/camisetas',                  [CamisetaController::class, 'index']);
     Route::get('/camisetas/barcode/{codigo}', [CamisetaController::class, 'buscarPorCodigo']);
-    Route::post('/camisetas/barcode', [CamisetaController::class, 'asociarCodigo']);
-    Route::get('/camisetas',          [CamisetaController::class, 'index']);
-    Route::post('/camisetas',         [CamisetaController::class, 'store']);
-    Route::post('/camisetas/importar',[CamisetaController::class, 'importar'])->middleware('ensure.owner');
-    Route::put('/camisetas/{id}',     [CamisetaController::class, 'update']);
-    Route::delete('/camisetas/{id}',  [CamisetaController::class, 'destroy']);
-    Route::put('/camisetas/{id}/stock', [CamisetaController::class, 'ajustarStock']);
 
-    // Ventas
-    Route::get('/ventas',             [VentaController::class, 'index']);
-    Route::post('/ventas',            [VentaController::class, 'store']);
-    Route::post('/ventas/carrito',    [VentaController::class, 'storeCarrito']);
-    Route::get('/ventas/resumen',     [VentaController::class, 'resumen']);
-    Route::put('/ventas/{id}',        [VentaController::class, 'update']);
-    Route::delete('/ventas/{id}',     [VentaController::class, 'destroy']);
+    Route::get('/ventas',          [VentaController::class, 'index']);
+    Route::get('/ventas/resumen',  [VentaController::class, 'resumen']);
+    Route::post('/ventas/carrito', [VentaController::class, 'storeCarrito']);
 
-    // Pedidos a proveedores
-    Route::get('/pedidos',            [PedidoController::class, 'index']);
-    Route::post('/pedidos',           [PedidoController::class, 'store']);
-    Route::put('/pedidos/{id}/aprobar',  [PedidoController::class, 'aprobar'])->middleware('ensure.owner');
-    Route::put('/pedidos/{id}/rechazar', [PedidoController::class, 'rechazar'])->middleware('ensure.owner');
-    Route::put('/pedidos/{id}/recibido', [PedidoController::class, 'marcarRecibido']);
-
-    // Envíos
-    Route::get('/envios',             [EnvioController::class, 'index']);
-    Route::post('/envios',            [EnvioController::class, 'store']);
-    Route::put('/envios/{id}',        [EnvioController::class, 'update']);
-    Route::put('/envios/{id}/estado', [EnvioController::class, 'avanzarEstado']);
-
-    // Devoluciones
-    Route::get('/devoluciones',       [DevolucionController::class, 'index']);
-    Route::post('/devoluciones',      [DevolucionController::class, 'store']);
-    Route::put('/devoluciones/{id}/aprobar',   [DevolucionController::class, 'aprobar'])->middleware('ensure.owner');
-    Route::put('/devoluciones/{id}/rechazar',  [DevolucionController::class, 'rechazar'])->middleware('ensure.owner');
-    Route::put('/devoluciones/{id}/completar', [DevolucionController::class, 'completar'])->middleware('ensure.owner');
-
-    // Transacciones / Finanzas
-    Route::get('/transacciones',      [TransaccionController::class, 'index']);
-    Route::post('/transacciones',     [TransaccionController::class, 'store']);
+    Route::get('/pedidos',         [PedidoController::class, 'index']);
+    Route::get('/envios',          [EnvioController::class, 'index']);
+    Route::get('/devoluciones',    [DevolucionController::class, 'index']);
+    Route::get('/transacciones',   [TransaccionController::class, 'index']);
     Route::get('/transacciones/cierre', [TransaccionController::class, 'cierre']);
-    Route::delete('/transacciones/{id}', [TransaccionController::class, 'destroy'])->middleware('ensure.owner');
+    Route::get('/config',          [ConfigController::class, 'index']);
 
-    Route::get('/config',  [ConfigController::class, 'index']);
-    Route::post('/config', [ConfigController::class, 'update'])->middleware('ensure.owner');
-    Route::post('/config/tasa-bcv', [ConfigController::class, 'tasaBcv'])->middleware('ensure.owner');
-
-    Route::get('/push/clave',       [PushController::class, 'clavePublica']);
-    Route::post('/push/suscribir',  [PushController::class, 'suscribir']);
-    Route::post('/push/desuscribir',[PushController::class, 'desuscribir']);
-    Route::post('/push/prueba',     [PushController::class, 'prueba']);
-
-    Route::get('/cierres',  [CierreController::class, 'index']);
-    Route::post('/cierres', [CierreController::class, 'store']);
-    Route::get('/cierres/estado',    [CierreController::class, 'estado']);
-    Route::get('/cierres/mensuales', [CierreController::class, 'mensuales']);
+    Route::get('/cierres',            [CierreController::class, 'index']);
+    Route::get('/cierres/estado',     [CierreController::class, 'estado']);
+    Route::get('/cierres/mensuales',  [CierreController::class, 'mensuales']);
     Route::get('/cierres/dia/{fecha}',[CierreController::class, 'resumenDia']);
-    Route::delete('/cierres/{id}',   [CierreController::class, 'destroy'])->middleware('ensure.owner');
 
-    // Actividad / Notificaciones (historial compartido entre encargado y dueño)
-    Route::get('/actividad',          [ActividadController::class, 'index']);
-    Route::post('/actividad',         [ActividadController::class, 'store']);
-    Route::post('/actividad/vistas',  [ActividadController::class, 'marcarVistas']);
-    Route::delete('/actividad/{id}',  [ActividadController::class, 'destroy'])->middleware('ensure.owner');
-    Route::delete('/actividad',       [ActividadController::class, 'limpiar'])->middleware('ensure.owner');
+    Route::get('/push/clave',        [PushController::class, 'clavePublica']);
+    Route::post('/push/suscribir',   [PushController::class, 'suscribir']);
+    Route::post('/push/desuscribir', [PushController::class, 'desuscribir']);
 
-    // Migración de datos
-    Route::post('/migrar',            [MigracionController::class, 'importar']);
+    Route::get('/actividad',         [ActividadController::class, 'index']);
+    Route::post('/actividad',        [ActividadController::class, 'store']);
+    Route::post('/actividad/vistas', [ActividadController::class, 'marcarVistas']);
 
-    // Borrado de datos (reinicio, solo dueño)
-    Route::post('/datos/borrar',      [\App\Http\Controllers\DatosController::class, 'borrar'])->middleware('ensure.owner');
+    // ── Dueño y encargado ──
+    Route::middleware('ensure.rol:owner,manager')->group(function () {
+        // Inventario
+        Route::post('/camisetas/barcode',   [CamisetaController::class, 'asociarCodigo']);
+        Route::post('/camisetas',           [CamisetaController::class, 'store']);
+        Route::put('/camisetas/{id}',       [CamisetaController::class, 'update']);
+        Route::put('/camisetas/{id}/stock', [CamisetaController::class, 'ajustarStock']);
 
+        // Ventas: venta suelta, corregir y borrar (queda registrado en el historial)
+        Route::post('/ventas',          [VentaController::class, 'store']);
+        Route::put('/ventas/{id}',      [VentaController::class, 'update']);
+        Route::delete('/ventas/{id}',   [VentaController::class, 'destroy']);
+
+        // Pedidos, envíos, devoluciones
+        Route::post('/pedidos',                [PedidoController::class, 'store']);
+        Route::put('/pedidos/{id}/recibido',   [PedidoController::class, 'marcarRecibido']);
+        Route::post('/envios',                 [EnvioController::class, 'store']);
+        Route::put('/envios/{id}',             [EnvioController::class, 'update']);
+        Route::put('/envios/{id}/estado',      [EnvioController::class, 'avanzarEstado']);
+        Route::post('/devoluciones',           [DevolucionController::class, 'store']);
+
+        // Gastos/ingresos manuales y cierres de caja
+        Route::post('/transacciones', [TransaccionController::class, 'store']);
+        Route::post('/cierres',       [CierreController::class, 'store']);
+
+        Route::post('/push/prueba',   [PushController::class, 'prueba']);
+    });
+
+    // ── Solo dueño ──
+    Route::middleware('ensure.owner')->group(function () {
+        Route::post('/camisetas/importar',   [CamisetaController::class, 'importar']);
+        Route::delete('/camisetas/{id}',     [CamisetaController::class, 'destroy']);
+
+        Route::put('/pedidos/{id}/aprobar',  [PedidoController::class, 'aprobar']);
+        Route::put('/pedidos/{id}/rechazar', [PedidoController::class, 'rechazar']);
+
+        Route::put('/devoluciones/{id}/aprobar',   [DevolucionController::class, 'aprobar']);
+        Route::put('/devoluciones/{id}/rechazar',  [DevolucionController::class, 'rechazar']);
+        Route::put('/devoluciones/{id}/completar', [DevolucionController::class, 'completar']);
+
+        Route::delete('/transacciones/{id}', [TransaccionController::class, 'destroy']);
+
+        Route::post('/config',          [ConfigController::class, 'update']);
+        Route::post('/config/tasa-bcv', [ConfigController::class, 'tasaBcv']);
+
+        Route::delete('/cierres/{id}',  [CierreController::class, 'destroy']);
+
+        Route::delete('/actividad/{id}', [ActividadController::class, 'destroy']);
+        Route::delete('/actividad',      [ActividadController::class, 'limpiar']);
+
+        // Migración desde localStorage: BORRA tablas. Además está apagada por
+        // configuración (tienda.permitir_migracion) salvo que se active a propósito.
+        Route::post('/migrar', [MigracionController::class, 'importar']);
+
+        // Borrado de datos (reinicio)
+        Route::post('/datos/borrar', [\App\Http\Controllers\DatosController::class, 'borrar']);
+    });
 });
