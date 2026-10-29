@@ -13,6 +13,13 @@ class MigracionController extends Controller
      */
     public function importar(Request $request)
     {
+        // Esta migración BORRA y reemplaza tablas completas. Solo se usó una vez al
+        // pasar de localStorage al servidor; queda apagada salvo que se active en
+        // config/tienda.php ('permitir_migracion' => true) para un caso puntual.
+        if (!config('tienda.permitir_migracion', false)) {
+            return response()->json(['error' => 'La migración está desactivada en este servidor'], 403);
+        }
+
         $datos = $request->validate([
             'camisetas'      => 'nullable|array',
             'pedidos'        => 'nullable|array',

@@ -365,7 +365,8 @@ class CamisetaController extends Controller
             'prov'   => (int)$c->proveedor_id,
             'precio' => isset($c->precio) && $c->precio !== null ? (float)$c->precio : null,
             'precio2' => isset($c->precio2) && $c->precio2 !== null ? (float)$c->precio2 : null,
-            'precio_costo' => isset($c->precio_costo) && $c->precio_costo !== null ? (float)$c->precio_costo : null,
+            // El precio de costo solo lo ven dueño y encargado (el trabajador no)
+            'precio_costo' => in_array(session('rol'), ['owner', 'manager'], true) && isset($c->precio_costo) && $c->precio_costo !== null ? (float)$c->precio_costo : null,
             'color' => $c->color ?? null,
             'departamento' => $c->departamento ?? null,
             'tipo_prenda' => $c->tipo_prenda ?? null,

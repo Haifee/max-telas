@@ -408,6 +408,9 @@ class VentaController extends Controller
                 'updated_at'  => now(),
             ]);
 
+            $this->auditar($request, 'Venta editada: ' . ($venta->numero_venta ?? '') . ' ' . $venta->equipo,
+                "Antes: {$venta->cantidad} UND · \${$venta->importe} → Ahora: {$nuevaCantidad} UND · \${$nuevoImporte}");
+
             DB::commit();
 
             return response()->json([
@@ -486,7 +489,7 @@ class VentaController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $venta = DB::table('ventas')->find($id);
         if (!$venta) return response()->json(['error' => 'Venta no encontrada'], 404);
@@ -510,11 +513,31 @@ class VentaController extends Controller
             // Borrar la venta
             DB::table('ventas')->where('id', $id)->delete();
 
+            $this->auditar($request, 'Venta eliminada: ' . ($venta->numero_venta ?? '') . ' ' . $venta->equipo,
+                "{$venta->cantidad} UND · \${$venta->importe} · del {$venta->fecha}");
+
             DB::commit();
             return response()->json(['ok' => true]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Error al eliminar la venta'], 500);
+        }
+    }
+
+    // Deja constancia en el historial de quién corrigió o borró una venta.
+    // Lo registra el servidor, así que no se puede saltar llamando al API directamente.
+    private function auditar(Request $request, string $desc, string $extra): void
+    {
+        try {
+            DB::table('actividad')->insert([
+                'tipo'        => 'venta',
+                'descripcion' => mb_substr($desc, 0, 190),
+                'extra'       => mb_substr($extra, 0, 190),
+                'rol'         => session('rol') ?: 'sistema',
+                'created_at'  => now(),
+            ]);
+        } catch (\Throwable $e) {
+            // El historial nunca debe impedir la operación
         }
     }
 
