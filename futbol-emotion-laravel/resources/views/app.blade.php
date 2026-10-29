@@ -1108,6 +1108,25 @@ async function asegurarCSRF(){
   await csrfListo;
 }
 
+// ── Anti-XSS: todo texto que llega del servidor se limpia antes de pintarse ──
+// Un nombre de producto/cliente con <, > o comillas podía ejecutar código en la
+// pantalla de otro usuario. Se cambian por caracteres parecidos e inofensivos.
+// Los códigos de barras y los datos de push no se tocan (deben quedar exactos).
+const _NO_LIMPIAR=new Set(['codigo','codigos','endpoint','keys','p256dh','auth','clave','publicKey']);
+function limpiarTexto(v){
+  if(typeof v!=='string' || !/[<>"'`]/.test(v)) return v;
+  const t=v.trim();
+  if((t[0]==='['||t[0]==='{')){ try{ return JSON.stringify(limpiarRespuesta(JSON.parse(t))); }catch(e){} }
+  return v.replace(/</g,'‹').replace(/>/g,'›').replace(/"/g,'″').replace(/'/g,'’').replace(/`/g,'’');
+}
+function limpiarRespuesta(x,clave){
+  if(clave && _NO_LIMPIAR.has(clave)) return x;
+  if(typeof x==='string') return limpiarTexto(x);
+  if(Array.isArray(x)) return x.map(e=>limpiarRespuesta(e));
+  if(x && typeof x==='object'){ const o={}; for(const k of Object.keys(x)){ const kk=limpiarTexto(k); o[kk]=limpiarRespuesta(x[k],k); } return o; }
+  return x;
+}
+
 // Llamadas al API de Laravel
 async function apiCall(method, endpoint, data=null){
   if(MODO_SERVIDOR) await asegurarCSRF();
@@ -1127,7 +1146,7 @@ async function apiCall(method, endpoint, data=null){
     throw e;
   }
   let json={};
-  try{ json=await res.json(); }catch(e){}
+  try{ json=limpiarRespuesta(await res.json()); }catch(e){}
   if(!res.ok){
     // Laravel responde {error} en nuestros controladores o {message, errors} en validaciones
     let msg=json.error||json.message||('Error del servidor ('+res.status+')');
@@ -2255,7 +2274,7 @@ async function eliminarVenta(id){
     if(ti>=0){transacciones.splice(ti,1); sd('transacciones',transacciones);}
     ventas=ventas.filter(x=>x.id!==id); sd('ventas',ventas);
   }
-  registrarActividad('venta',`Venta eliminada: ${v.equipo}`,`${v.cant} UND · ${fmt(v.imp)}`);
+  // (El servidor ya deja la eliminación en el historial, con quién la hizo)
   toast('Venta eliminada ✓ Stock y caja corregidos');
   refrescarVistasVenta();
 }
